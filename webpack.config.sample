@@ -1,0 +1,125 @@
+//需要自行安装这些依赖
+const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
+const UploaderPlugin = require('webpack-bundle-cdn-uploader');
+
+module.exports = (env, options) =>{
+
+    const onProd = options.mode === 'production'; 
+    const publicPath = onProd ? '//[your.cdn.url]/':'/'; //替换your.cdn.url成你的CDN地址, 注意斜杆
+    
+    const HtmlWebpackPluginConfig = new HtmlWebpackPlugin({
+        template: 'src/index.html',
+        inject: 'body'
+    });
+
+    const uploaderOptions = {
+        cdn:{
+            type:'qiniu', //暂时只支持七牛
+            accessKey:'[your.qiniu.access_key]', //替换成你的七牛access key
+            secretKey:'[your.qiniu.secret_key]', //替换成你的七牛secret key
+            bucket:'[your.qiniu.bucket]', //替换成你的七牛上传bucket名称
+            host:'[your.qiniu.server]' //替换你的七牛区域, 实际哪个区域得查看七牛文档
+        },
+        deletePrevious:true, //是否从CDN上删除上一次上传的bundle文件
+        deleteOutput:true //是否删除webpack打包后的文件
+    };
+    
+    let plugins = [
+        HtmlWebpackPluginConfig,
+        new webpack.DefinePlugin({
+            PUBLIC:JSON.stringify( publicPath ),
+            __VERSION__: JSON.stringify(require('./package.json').version),
+            'process.env': {
+                'NODE_ENV': JSON.stringify(options.mode)
+            }
+        }),
+        new MiniCssExtractPlugin({
+            filename: onProd ? "styles/[name].[hash].css":"[name].css",
+            chunkFilename: onProd ? "styles/[id].[hash].css":"[id].css"
+        })
+    ];
+
+    let moduleLoaders = [
+        { test: /\.js$/, use: 'babel-loader', exclude: /node_modules/ }
+    ];
+
+    let optimization = {
+        runtimeChunk: false,
+        splitChunks: {
+            cacheGroups: {
+                default: false,
+                commons: {
+                    test: /[\\/]node_modules[\\/]/,
+                    name: 'chunk',
+                    chunks: 'all',
+                    minChunks: 2
+                }
+            }
+        }
+    };
+
+    if ( onProd ){
+         //生产环境代码进行压缩并且将css合并至单独文件中
+        moduleLoaders.push( { test: /\.css$/,use:[
+            MiniCssExtractPlugin.loader,
+            {
+                loader:'css-loader',
+                options:{
+                    minimize: onProd
+                }
+            }
+        ]});
+    
+        optimization.minimizer = [
+            new UglifyJSPlugin({
+                cache: true,
+                sourceMap: true,
+                uglifyOptions: {
+                compress: {
+                    inline: false,
+                    ecma: 6
+                }
+                }
+            }),
+            new OptimizeCSSAssetsPlugin({})
+        ];
+
+        //上传至CDN
+        plugins.push( new UploaderPlugin(uploaderOptions) );
+    }else{
+        //测试环境将css默认存储在head中实现实时更新
+        moduleLoaders.push( { test: /\.css$/, use: ['style-loader', { loader:'css-loader', options:{ minimize: false } }] } );
+    }
+    
+    return {
+        mode: options.mode,
+        entry: './src/main.js',
+        output: {
+            path:path.resolve(__dirname, './output'),
+            publicPath,
+            filename:  onProd ? 'build/[name].[chunkhash].js':'build/bundle.js'
+        },
+        module: {
+            rules: moduleLoaders
+        },
+        resolve:{
+            alias:{
+                'node_modules':path.resolve(__dirname,'node_modules')
+            }
+        },
+        plugins,
+        // webpack热更新服务器, 如果有需要的话请自行配置
+        // devServer: {  
+        //     publicPath: "/",
+        //     contentBase: "./public/",
+        //     compress: true,
+        //     port: 12345,
+        //     historyApiFallback:true,
+        //     host:"0.0.0.0",
+        // },
+    };
+}

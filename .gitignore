@@ -1,0 +1,8 @@
+# MAC
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Dependency directory
+node_modules
+*.log
