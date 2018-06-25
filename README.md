@@ -1,12 +1,19 @@
 # webpack-bundle-cdn-uploader
 
-在webpack打包完成后将打包文件上传至CDN
+   <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png" width="350">
+ 
+       在webpack打包完成后将打包文件上传至CDN
+
 
 ### 安装
 
 ```
 $ npm install --save-dev webpack-bundle-cdn-uploader
 ```
+
+### 支持CDN列表
+
+        暂时只支持七牛, 有时间再增加
 
 ### 参数
 
