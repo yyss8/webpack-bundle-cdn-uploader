@@ -33,5 +33,6 @@ $ npm install --save-dev webpack-bundle-cdn-uploader
 
 ### 注意
 
-- 因为通过publicPath被设置成了CDN链接, 所以其他使用了该地址的链接都必须被上传至CDN
+- 如果使用了html打包插件那么publicPath记得设置为CDN地址而非本地地址, 同时其他使用了该地址的链接也都需要替换或者上传至CDN
+- 打包结束后会在webpack配置中的输出文件夹产生一个`wp.previous.json`文件记录上一次的打包以及输出配置, 如果需要在每次打包后删除CDN上的旧资源请不要删除这个文件
 - 对打包数据显示这一块不熟悉, 所以用了本插件可能会造成output分析数据不显示, 还在想方法解决中
