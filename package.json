@@ -16,7 +16,7 @@
     "url": "https://github.com/yyss8/webpack-bundle-uploader-plugin/issues"
   },
   "homepage": "https://github.com/yyss8/webpack-bundle-uploader-plugin#readme",
-  "keywords":[
+  "keywords": [
     "webpack CDN upload",
     "webpack Qiniu",
     "webpack bundle upload"
