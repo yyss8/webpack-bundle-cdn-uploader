@@ -63,7 +63,7 @@ class WebpackBundleUploaderPlugin{
                             ContentLength:_data.length
                         }, (err, data)=>{
                             if ( err ){
-                                reject();
+                                reject(err);
                                 return;
                             }
                             resolve(data);
@@ -123,7 +123,6 @@ class WebpackBundleUploaderPlugin{
                                 reject(err);
                                 return;
                             }
-    
                             resolve(log.files.length);
                         });
                     });

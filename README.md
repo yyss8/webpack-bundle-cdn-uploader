@@ -1,6 +1,6 @@
 # webpack-bundle-cdn-uploader
 
-   <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png" width="350">
+   <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
  
     在webpack打包完成后将打包文件上传至对应CDN, 开箱即用, 不需要自己配置上传功能
 
@@ -9,11 +9,33 @@
  - webpack 3@3.11.2
  - webpack 4@4.15.1
 
-### 安装
+### 安装/使用
 
 ```
 
 npm install --save-dev webpack-bundle-cdn-uploader
+
+const CdnUploadPlugin = require('webpack-bundle-cdn-uploader');
+
+//实际参数以及介绍参考底下参数一栏
+const uploaderOptions = {
+    cdn:{
+        type:'[qiniu|txcos]', //腾讯txcos或七牛qiniu, 下面的key和id只有对应的
+        accessKey:'[your.qiniu.access_key|your.txcos.secretId]', //替换成你的七牛accessKey或者腾讯cos的secretId
+        secretKey:'[your.qiniu.secret_key|your.txcos.secretKey]', //替换成你的七牛secretKey或者腾讯cos的secretKey
+        bucket:'[your.bucket]', //替换成你的腾讯/七牛上传bucket名称
+        host:'[your.region]' //替换你的腾讯/七牛存储区域, 实际哪个区域得查看对应文档
+    },
+    deletePrevious:true, //是否从CDN上删除上一次上传的bundle文件
+    deleteOutput:true //是否删除webpack打包后的文件
+};
+
+module.exports = {
+    // ...
+    plugins: [
+        new CdnUploadPlugin(uploaderOptions)
+    ]
+}
 
 #webpack配置文件例子请查看example目录下的对应版本config.sample文件
 
@@ -21,7 +43,7 @@ npm install --save-dev webpack-bundle-cdn-uploader
 
 ### 支持CDN列表
 
-- 七牛 - 使用自定自己封装的上传工具
+- 七牛 - 使用自己封装的上传工具
 - 腾讯cos - 使用官方SDK
 
 ### 参数
@@ -33,7 +55,7 @@ npm install --save-dev webpack-bundle-cdn-uploader
      * `accessKey`: 对应的cdn access key: (必填) (七牛为access key|腾讯为secret id)
      * `secretKey`: 对应的cdn secret key: (必填) (七牛为secret key|腾讯为secret key)
      * `host`: 服务器区域代码, (必填) 例如七牛z1,或腾讯cos的ap-shanghai
-- `deletePrevious`: (true/false) (默认false) 是否从CDN上删除上一次上传的bundle文件, 大部分存储提供商都提供相同文件覆盖, 所以无需开启, 主要用于更换cdn后删除原cdn信息
+- `deletePrevious`: (true/false) (默认false) 是否从CDN上删除上一次上传的bundle文件, 大部分存储提供商都可以对相同文件名进行覆盖, 所以无需开启, 主要用于更换cdn后删除原cdn信息
 - `deleteOutput`: (true/false)  (默认false) 是否删除webpack打包后的文件
 
 ### 注意
