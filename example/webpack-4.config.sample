@@ -12,17 +12,18 @@ module.exports = (env, options) =>{
     const publicPath = onProd ? '//[your.cdn.url]/':'/'; //替换your.cdn.url成你的CDN地址, 注意斜杆
     
     const HtmlWebpackPluginConfig = new HtmlWebpackPlugin({
-        template: 'src/index.html',
+        template: 'src/index.html', //打包前html文件位置
+        filename: 'index.html', //html文件输出名称
         inject: 'body'
     });
 
     const uploaderOptions = {
         cdn:{
-            type:'qiniu', //暂时只支持七牛
-            accessKey:'[your.qiniu.access_key]', //替换成你的七牛access key
-            secretKey:'[your.qiniu.secret_key]', //替换成你的七牛secret key
-            bucket:'[your.qiniu.bucket]', //替换成你的七牛上传bucket名称
-            host:'[your.qiniu.server]' //替换你的七牛区域, 实际哪个区域得查看七牛文档
+            type:'[qiniu|txcos]', //腾讯txcos或七牛qiniu, 下面的key和id只有对应的
+            accessKey:'[your.qiniu.access_key|your.txcos.secretId]', //替换成你的七牛accessKey或者腾讯cos的secretId
+            secretKey:'[your.qiniu.secret_key|your.txcos.secretKey]', //替换成你的七牛secretKey或者腾讯cos的secretKey
+            bucket:'[your.bucket]', //替换成你的腾讯/七牛上传bucket名称
+            host:'[your.region]' //替换你的腾讯/七牛存储区域, 实际哪个区域得查看对应文档
         },
         deletePrevious:true, //是否从CDN上删除上一次上传的bundle文件
         deleteOutput:true //是否删除webpack打包后的文件
@@ -38,7 +39,7 @@ module.exports = (env, options) =>{
             }
         }),
         new MiniCssExtractPlugin({
-            filename: onProd ? "styles/[name].[hash].css":"[name].css",
+            filename: onProd ? "styles/[name].[hash].css":"[name].css",   //css输出文件名, 一般可以使用例如style/这样的前缀当作输出目录名称
             chunkFilename: onProd ? "styles/[id].[hash].css":"[id].css"
         })
     ];
@@ -101,7 +102,7 @@ module.exports = (env, options) =>{
         output: {
             path:path.resolve(__dirname, './output'),
             publicPath,
-            filename:  onProd ? 'build/[name].[chunkhash].js':'build/bundle.js'
+            filename:  onProd ? 'build/[name].[chunkhash].js':'build/bundle.js' //css输出文件名, 一般可以使用例如build/这样的前缀当作输出目录名称
         },
         module: {
             rules: moduleLoaders
@@ -116,7 +117,6 @@ module.exports = (env, options) =>{
         // devServer: {  
         //     publicPath: "/",
         //     contentBase: "./public/",
-        //     compress: true,
         //     port: 12345,
         //     historyApiFallback:true,
         //     host:"0.0.0.0",

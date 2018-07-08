@@ -1,6 +1,6 @@
 {
   "name": "webpack-bundle-cdn-uploader",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "在webpack打包完成后将打包文件上传至各类CDN",
   "main": "index.js",
   "scripts": {
@@ -8,17 +8,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yyss8/webpack-bundle-uploader-plugin.git"
+    "url": "git+https://github.com/yyss8/webpack-bundle-cdn-uploader.git"
   },
   "author": "Shen",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/yyss8/webpack-bundle-uploader-plugin/issues"
+    "url": "https://github.com/yyss8/webpack-bundle-cdn-uploader/issues"
   },
-  "homepage": "https://github.com/yyss8/webpack-bundle-uploader-plugin#readme",
+  "homepage": "https://github.com/yyss8/webpack-bundle-cdn-uploader",
   "keywords": [
     "webpack CDN upload",
     "webpack Qiniu",
-    "webpack bundle upload"
-  ]
+    "webpack bundle upload",
+    "webpack cos upload",
+    "webpack Tengxun cos"
+  ],
+  "dependencies": {
+    "cos-nodejs-sdk-v5": "^2.4.3"
+  }
 }

@@ -6,3 +6,9 @@
 # Dependency directory
 node_modules
 *.log
+
+# test/examples
+test
+test/*
+
+.npmignore

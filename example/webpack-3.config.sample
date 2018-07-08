@@ -1,0 +1,139 @@
+//需要自行安装这些依赖, css部分有使用scss所以也需要自行安装或删除
+
+const webpack = require("webpack");
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const path = require('path');
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const CdnUploadPlugin = require('../../index');
+
+const onProd        = process.env.NODE_ENV == 'production';
+
+const uploaderOptions = {
+    cdn:{
+        type:'[qiniu|txcos]', //腾讯txcos或七牛qiniu, 下面的key和id只有对应的
+        accessKey:'[your.qiniu.access_key|your.txcos.secretId]', //替换成你的七牛accessKey或者腾讯cos的secretId
+        secretKey:'[your.qiniu.secret_key|your.txcos.secretKey]', //替换成你的七牛secretKey或者腾讯cos的secretKey
+        bucket:'[your.bucket]', //替换成你的腾讯/七牛上传bucket名称
+        host:'[your.region]' //替换你的腾讯/七牛存储区域, 实际哪个区域得查看对应文档
+    },
+    deletePrevious:true, //是否从CDN上删除上一次上传的bundle文件
+    deleteOutput:true //是否删除webpack打包后的文件
+};
+
+const HtmlWebpackPluginConfig = new HtmlWebpackPlugin({
+    template: 'src/index.html', //打包前html文件位置
+    filename: 'index.html', //html文件输出名称
+    inject: 'body'
+});
+
+let plugins = [
+    HtmlWebpackPluginConfig,
+    new webpack.DefinePlugin({
+    }),
+    new webpack.optimize.CommonsChunkPlugin({
+        name: "commons", //通用包的名称
+        filename: "[name].[hash].js", //通用包的命名规则
+    }),
+    new ExtractTextPlugin({
+     filename: '[name].[contenthash].css'  //独立css文件的命名规则
+    }),
+    new CdnUploadPlugin(uploaderOptions) //加载cdn上传插件
+];
+
+let moduleLoaders = [
+    { test: /\.js$/, use: 'babel-loader', exclude: /node_modules/ },
+    { test: /\.jsx$/, use: 'babel-loader', exclude: /node_modules/ },
+    { test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/, use: "url-loader?limit=10000&minetype=application/font-woff" },
+    { test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/, use: "file-loader" },
+    { test: /\.(gif|png|jpe?g|svg)$/i,
+        use: [
+          'file-loader',
+          {
+            loader: 'image-webpack-loader',
+            options: {
+              bypassOnDebug: true,
+            },
+          },
+        ],
+    }
+];
+
+if ( onProd ){
+
+    //生产模式对代码进行压缩并且将css合并至单独文件中
+    plugins.push( new webpack.optimize.UglifyJsPlugin({minimize: true, compress: { warnings: false }}) );
+    moduleLoaders.push( { test: /\.css$/, loader: ExtractTextPlugin.extract({
+        fallback: 'style-loader',
+        use:[
+            {
+                loader:'css-loader',
+                options:{
+                    minimize: onProd
+                }
+            },
+        ]
+    })} );
+
+    //不使用scss可以删除这段
+    moduleLoaders.push( {
+        test: /\.scss$/, 
+        loader:ExtractTextPlugin.extract({
+            fallback:'style-loader',
+            use: [
+                    {
+                    loader: 'css-loader', options: {
+                        modules: true,
+                        localIdentName: '[local]'
+                    }
+                },
+                'sass-loader'
+            ]
+        })
+    });
+}else{
+    //测试环境将css默认存储在style tag中, 即可更新并且无需刷新页面
+    moduleLoaders.push( { test: /\.css$/, use: ['style-loader', { loader:'css-loader', options:{ minimize: false } }] } );
+
+    //不使用scss可以删除这段
+    moduleLoaders.push({
+        test: /\.scss$/,
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader', options: {
+              sourceMap: true, modules: true,
+              localIdentName: '[local]'
+            }
+          },
+          {
+            loader: 'sass-loader', options: { sourceMap: true }
+          }
+        ]
+    });
+}
+
+module.exports = {
+    entry: path.resolve(__dirname, 'src') + '/index.js',
+    output: {
+        path: path.resolve(__dirname, './output'),
+        publicPath :'//[your.cdn.url]/', //替换为你的cdn地址 
+        filename: 'build/[name].[hash].js' //输出文件名, 一般可以使用例如build/这样的前缀当作输出目录名称
+    },
+    module: {
+        loaders: moduleLoaders
+    },
+    resolve:{
+        alias:{
+            node_modules:path.resolve(__dirname,'node_modules'),
+        }
+    },
+    plugins,
+    // webpack热更新服务器, 如果有需要的话请自行配置
+    // devServer: {  
+    //     publicPath: "/",
+    //     contentBase: "./public/",
+    //     port: 12345,
+    //     historyApiFallback:true,
+    //     host:"0.0.0.0",
+    // },
+};
