@@ -1,6 +1,6 @@
 {
   "name": "webpack-bundle-cdn-uploader",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "在webpack打包完成后将打包文件上传至各类CDN",
   "main": "index.js",
   "scripts": {
