@@ -202,10 +202,13 @@ class WebpackBundleUploaderPlugin{
                     return;
                 case 's3':
                     const s3Data = new Buffer( data );
+                    const contentType = cdn.contentType || 'text/plain';
+                    const permission = cdn.permission || 'public-read';
+
                     this.cdn.s3.putBuffer(s3Data, `/${name}` ,{
                         'Content-Length': s3Data.length,
-                        'x-amz-acl':'public-read',
-                        'Content-Type': 'text/plain'
+                        'x-amz-acl':permission,
+                        'Content-Type': contentType
                     }, (err, res)=>{
                         if ( err ){
                             reject(err);
