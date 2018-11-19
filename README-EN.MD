@@ -2,7 +2,7 @@
 
    <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
 
-    [中文翻译](/README.MD)
+    [中文翻译](https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/README.md)
 
     An open-box webpack plugin to upload your compiled bundle files to CDN stroages or FTP server
 

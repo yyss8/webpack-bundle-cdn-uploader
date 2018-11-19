@@ -2,7 +2,7 @@
 
    <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
  
-    [ENGLISH VERSION](/README-EN.MD)
+    [ENGLISH VERSION](https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/README-EN.MD)
 
     在Webpack打包完成后自动将打包文件上传至对应CDN或FTP, 开箱即用.
 

@@ -1,7 +1,6 @@
 'use strict';
 
 const _supportedCdns = ['qiniu', 'txcos', 'ftp', 's3'];
-const { en, cn } = require('./lang');
 const fs = require('fs');
 const readline = require('readline');
 
@@ -26,6 +25,8 @@ class WebpackBundleUploaderPlugin{
      * 加载语言文件, 如果为路径则可加载自定义文件
      */
     loadLanguage(){
+
+        const { en, cn } = require('./lang');
 
         if ( !this.options || typeof this.options.lang === 'undefined' ){
             this.lang = cn;
