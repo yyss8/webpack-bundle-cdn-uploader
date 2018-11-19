@@ -7,25 +7,34 @@ const rfUrl = 'rs.qiniu.com';
 class Qiniu {
 
     constructor( accessKey, secretKey, host){
-        
         this.accessKey = accessKey;
         this.secretKey = secretKey;
         this.host = host;
     }
 
     getUploadHost (){
-        return `upload-${this.host}.qiniu.com`;
+        return this.host === 'z0' ? 'upload.qiniup.com':`upload-${this.host}.qiniup.com`;
     }
 
+    /**
+     * @description 通过原数据上传
+     * 
+     * @param {string} bucket
+     * 指定bucket
+     * @param {string|Buffer} data
+     * 准备上传数据
+     * @param {object} params
+     * 上传参数
+     */
     uploadByData( bucket, data, params = {} ){
 
         return new Promise( (resolve, reject) =>{
 
-            const file = new Buffer( data );
+            const file = data instanceof Buffer ? data:new Buffer( data );
             const fileSize = file.length;
 
             if ( fileSize <= 0 ){
-                reject('空文件');
+                reject('上传文件数据为空');
             }
 
             const _params = Qiniu.haveUploadParamsReady( bucket, '', params );
@@ -36,7 +45,13 @@ class Qiniu {
     
             const authorization  = `UpToken ${token}`;
             const encodedKey     = Qiniu.safeEncode( fileName );
-        
+            const host           = this.getUploadHost();
+
+            if ( !host ){
+                reject(`无效上传地区: ${this.host}`);
+                return;
+            }
+
             const postRequest = https.request({
                 host:this.getUploadHost(),
                 path:`/putb64/${fileSize}/key/${encodedKey}`,
@@ -64,6 +79,9 @@ class Qiniu {
         });
     }
 
+    /**
+     * @description 获取指定bucket列表
+     */
     list(bucket, fileName ='', limit = 1000){
 
         return new Promise( (resolve, reject) =>{
@@ -106,6 +124,14 @@ class Qiniu {
 
     }
 
+    /**
+     * @description 批量操作
+     * 
+     * @param {array} resources
+     * 包含所操作内容对象的数组, 格式: {bucket:bucket, key:key}
+     * @param {string} action
+     * 统一指定操作
+     */
     batchAction( resources, action = ''){
 
         return new Promise( (resolve, reject) =>{
@@ -137,7 +163,6 @@ class Qiniu {
             }, res =>{
 
                 res.on('data', _response =>{
-   
                     resolve( JSON.parse( _response ).length );
                 });
 
@@ -235,9 +260,10 @@ class Qiniu {
         return prefix + '_' + randomKey;
     }
 
-    //转码为七牛云可接收的格式
+    /**
+     * @description 转码为七牛云可接收的格式
+     */
     static safeEncode( content , encode = true ){
-
         return encode ? new Buffer(content).toString('base64').replace(/\+/g, '-').replace(/\//g, '_')
                       : content.replace(/\+/g, '-').replace(/\//g, '_');
     }
