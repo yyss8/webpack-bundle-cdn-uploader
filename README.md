@@ -52,10 +52,10 @@ module.exports = {
 
 ### 参数
 
-- `cdn`: `object|array` CDN参数 (传入Array则可以上传至不同的CDN, 子参数与以下相同, 并且必须传入test参数作为文件区分), 
+- `cdn`: `object|array` CDN参数 (传入Array则可以上传至不同的CDN, 子参数与以下相同), 
      * `type`:`qiniu|txcos|s3|ftp` CDN类型, (必填) 其余所需参数通过这个变量来判断 (七牛:qiniu|腾讯txcos|S3|FTP)
      * `bucket`: 所上传的bucket名称, (暂时必填) 大部分对象存储提供商都类似 
-     * `test`:需要上传文件后缀的正则, 默认(/\.css|\.js/)
+     * `test`:需要上传文件后缀的正则, 默认(/\.css|\.js/) (如果上传至不同CDN则为必选参数作为文件区分)
      * `accessKey`: 对应的cdn access key: (必填) (七牛为access key|腾讯为secret id)
      * `secretKey`: 对应的cdn secret key: (必填) (七牛为secret key|腾讯为secret key)
      * `host`: 服务器区域代码, (必填, S3无需填写, FTP为IP地址) 例如七牛z1,或腾讯cos的ap-shanghai
@@ -64,6 +64,7 @@ module.exports = {
      * `password`:(FTP独有) FTP密码, 默认 `anonymous@`
      * `contentType` (S3独有), 输出格式, 否则诸如HTML可能会直接输出源码 (默认: text/plain)
      * `permission` (s3独有), s3权限设置, (默认:public-read)
+     * `metas` (Only for s3) (可选) 输出Meta, 如果包含content-type则会覆盖上面的contentType参数
 - `deletePrevious`: (true|false) (默认false) 是否从CDN上删除上一次上传的bundle文件, 大部分存储提供商都可以对相同文件名进行覆盖, 所以无需开启, 主要用于更换cdn后删除原cdn信息
 - `deleteOutput`: (true|false)  (默认false) 是否删除webpack打包后的文件
 - `lang`: (en|cn|[自定义输出语言文件路径]) console.log输出语言, 默认(cn), 如果要输出自己的文字则传入语言文件地址

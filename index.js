@@ -15,7 +15,7 @@ class WebpackBundleUploaderPlugin{
         this.loadLanguage();
 
         if ( !RegExp.toJSON ){
-            //Regexp本身不带toJson方法
+            //Regexp本身不带toJson方法, 需要toJson保存用于筛选的Regexp
             RegExp.prototype.toJSON = RegExp.prototype.toString; 
         }
     }
@@ -86,6 +86,12 @@ class WebpackBundleUploaderPlugin{
 
             switch ( cdnObject.type ){
                 case 'qiniu':
+
+                    if ( typeof this.cdn.qiniu !== 'undefined' ){
+                        resolve();
+                        return;
+                    }
+
                     if ( !cdnObject.secretKey || !cdnObject.accessKey ){
                         reject( this.lang.EMPTY_ACCESS_OR_SECRET.replace('%s', '七牛') );
                         return;
@@ -94,10 +100,17 @@ class WebpackBundleUploaderPlugin{
                     this.cdn.qiniu = new Qiniu( cdnObject.accessKey, cdnObject.secretKey, cdnObject.host );
                     break;
                 case 'txcos':
+
+                    if ( typeof this.cdn.txcos !== 'undefined' ){
+                        resolve();
+                        return;
+                    }
+
                     if ( !cdnObject.secretKey || !cdnObject.accessKey ){
                         reject( this.lang.EMPTY_ACCESS_OR_SECRET.replace('%s', '腾讯COS') );
                         return;
                     }
+
                     const COS = require('cos-nodejs-sdk-v5');
                     this.cdn.txcos = new COS({
                         SecretId:cdnObject.accessKey,
@@ -107,6 +120,12 @@ class WebpackBundleUploaderPlugin{
                 case 'aliyun':
                     break;
                 case 'ftp':
+
+                    if ( typeof this.cdn.ftp !== 'undefined' ){
+                        resolve();
+                        return;
+                    }
+
                     if ( typeof cdnObject.destPath === 'undefined' ){
                         reject( this.lang.INVALID_FTP_DEST_PATH );
                         return;
@@ -122,6 +141,12 @@ class WebpackBundleUploaderPlugin{
                     });
                     break;
                 case 's3':
+
+                    if ( typeof this.cdn.s3 !== 'undefined' ){
+                        resolve();
+                        return;
+                    }
+
                     if ( !cdnObject.secretKey || !cdnObject.accessKey ){
                         reject( this.lang.EMPTY_ACCESS_OR_SECRET.replace('%s', 's3') );
                         return;
@@ -189,27 +214,57 @@ class WebpackBundleUploaderPlugin{
                     return;
                 case 'ftp':
                     const { destPath } = cdn;
-                    const _path = destPath.endsWith('\/') ? destPath.substr(0, destPath.length - 1):destPath;
-                    const path = `${_path}/${name}`;
-                    this.cdn.ftp
-                    .putOrMkdir(data, path)
-                    .then( response =>{
-                        resolve( response );
-                    })
-                    .catch( rejected =>{
-                        reject(rejected);
-                    });
+                    const toMultiplePath = Array.isArray( destPath );
+
+                    //如果需要上传至多个路径
+                    if ( toMultiplePath ){
+
+                        let uploadingTasks = [];
+
+                        destPath.forEach( p => {
+                            const shouldTest = typeof p !== 'string' && p.test instanceof RegExp;
+                            if ( shouldTest && !p.test.test( name ) ){
+                                return;
+                            }
+
+                            const upPath = shouldTest ? p.path:p;
+                            const _path = upPath.endsWith('\/') ? upPath.substr(0, upPath.length - 1):upPath;
+                            const path = `${_path}/${name}`;
+                            uploadingTasks.push( this.cdn.ftp.putOrMkdir(data, path) );
+                        });
+
+                        Promise
+                        .all( uploadingTasks )
+                        .then( responses => {
+                            resolve( responses );
+                        })
+                        .catch( rejected => {
+                            reject(rejected);
+                        });
+                    }else{
+                        const _path = destPath.endsWith('\/') ? destPath.substr(0, destPath.length - 1):destPath;
+                        const path = `${_path}/${name}`;
+                        this.cdn.ftp
+                        .putOrMkdir(data, path)
+                        .then( response =>{
+                            resolve( response );
+                        })
+                        .catch( rejected =>{
+                            reject(rejected);
+                        });
+                    }    
                     return;
                 case 's3':
                     const s3Data = new Buffer( data );
                     const contentType = cdn.contentType || 'text/plain';
                     const permission = cdn.permission || 'public-read';
-
-                    this.cdn.s3.putBuffer(s3Data, `/${name}` ,{
+                    const addHeaders = Object.assign({}, {
                         'Content-Length': s3Data.length,
                         'x-amz-acl':permission,
                         'Content-Type': contentType
-                    }, (err, res)=>{
+                    }, cdn.metas || {});
+
+                    this.cdn.s3.putBuffer(s3Data, `/${name}` , addHeaders, (err, res)=>{
                         if ( err ){
                             reject(err);
                             return;
@@ -303,7 +358,7 @@ class WebpackBundleUploaderPlugin{
 
                 let deletingCdnTypes = {};
                 let deletingPromises = [];
-
+    
                 log.cdn.forEach( cdn =>{
                 
                     if ( !cdn.test ){
@@ -375,9 +430,10 @@ class WebpackBundleUploaderPlugin{
      * @return {Promise}
      */
     getDeletePromiseTask( files, cdn ){
-        switch ( cdn.type ){
-            case 'qiniu':
-                return new Promise( (resolve, reject) =>{
+
+        return new Promise ( (resolve, reject) => {
+            switch ( cdn.type ){
+                case 'qiniu':
                     const resources = files.map( file =>{
                         return {
                             bucket:cdn.bucket,
@@ -392,9 +448,8 @@ class WebpackBundleUploaderPlugin{
                     .catch( rejected =>{
                         reject(rejected);
                     });
-                });
-            case 'txcos':
-                return new Promise( (resolve, reject) =>{
+                    break;
+                case 'txcos':
                     const params = {
                         Bucket:cdn.bucket,
                         Region:cdn.host,
@@ -412,23 +467,52 @@ class WebpackBundleUploaderPlugin{
 
                         resolve(data.Deleted.length);
                     });
-                });
-            case 'ftp':
-                return new Promise( (resolve, reject) =>{
-                    Promise.all(files.map( file => {
+                    break;
+                case 'ftp':
+
+                    let ftpDeletingTasks = [];
+                    const { destPath } = cdn;
+                    const toMultiplePath = Array.isArray( destPath );
+
+                    if ( toMultiplePath ){
+
+                        destPath.forEach( p => {
+                            const shouldTest = typeof p !== 'string' && p.test instanceof RegExp;
+                            files.forEach( file => {
+                                if ( shouldTest && !p.test.test( file ) ){
+                                    return;
+                                }
+
+                                const upPath = shouldTest ? p.path:p;
+                                const _path = upPath.endsWith('\/') ? upPath.substr(0, upPath.length - 1):upPath;
+                                const path = `${_path}/${file.fileName}`;
+                                ftpDeletingTasks.push( this.cdn.ftp.deleteAwait( path ) );
+                            });
+                        });
+
+                    }else{
                         const _path = cdn.destPath.endsWith('\/') ? cdn.destPath.substr(0, cdn.destPath.length - 1):cdn.destPath;
                         const path = `${_path}/${file.fileName}`;
-                        return this.cdn.ftp.deleteAwait(path);
-                    }))
-                    .then( () =>{
-                        resolve( files.length );
-                    })
-                    .catch( rejected =>{
-                        reject(rejected);
-                    });
-                });
-            case 's3':
-                return new Promise( (resolve, reject) =>{
+                        ftpDeletingTasks.push( this.cdn.ftp.deleteAwait(path) );
+                    }
+                    
+
+                    if ( !!ftpDeletingTasks[0] ){
+                        Promise
+                        .all( ftpDeletingTasks )
+                        .then( responses => {
+                            console.log(responses);
+                            resolve(responses);
+                        })
+                        .catch( rejected => {
+                            reject(rejected);
+                        });   
+                    }else{
+                        resolve();
+                    }
+
+                    break;
+                case 's3':
                     const s3Deleting = files.map( file => `/${file}`);
                     this.cdn.s3.deleteMultiple( s3Deleting, (err, res) =>{
                         if ( err ){
@@ -437,8 +521,9 @@ class WebpackBundleUploaderPlugin{
                         }
                         resolve( files.length );
                     });
-                });
-        }
+                    break;
+            }
+        });
 
     }
 
@@ -452,13 +537,14 @@ class WebpackBundleUploaderPlugin{
 
         return new Promise( (resolve, reject) =>{
 
-            if ( !this.cdn ){
-                reject('');
+            if ( typeof this.cdn === 'undefined' ){
+                reject('CDN为空');
+                return;
             }
 
             switch ( this.options.cdn.type ){
                 case 'ftp':
-                    this.cdn
+                    this.cdn.ftp
                     .destroy()
                     .then( () =>{
                         resolve();
