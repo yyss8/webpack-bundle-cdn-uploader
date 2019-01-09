@@ -1,5 +1,12 @@
 # Changelog 改动记录
 
+## [0.3.2] - 2019-01-09
+
+ * Duplicated file path issue fixed for Mac - 解决Mac下上传文件地址重复的问题
+ * Switched from new Buffer to Buffer.from to avoid deprecated warnings - 更改Buffer使用方法避免过期警告
+ * Optimzed FTP upload - 优化FTP上传
+ * Fixed issue of not being able to delete previous files - 修复无法删除CDN文件的问题
+
 ## [0.3] - 2018-11-17
 
  * Allowing different files to be uploaded to different CDN by using Regex - 支持通过正则筛选不同文件上传至不同的CDN

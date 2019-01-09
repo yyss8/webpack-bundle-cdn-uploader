@@ -3,17 +3,17 @@
 const _supportedCdns = ['qiniu', 'txcos', 'ftp', 's3'];
 const fs = require('fs');
 const readline = require('readline');
+const path = require('path');
 
-const resetColor = "\x1b[0m";
-const successColor = "\x1b[32m";
-const errorColor = "\x1b[31m";
+const cl = require('./libs/color-log');
 
 class WebpackBundleUploaderPlugin{
 
     constructor( options ){
         this.options = options;
         this.loadLanguage();
-
+        this.isMultipleCdn = Array.isArray( this.options.cdn );
+        this.cdn = {};
         if ( !RegExp.toJSON ){
             //Regexp本身不带toJson方法, 需要toJson保存用于筛选的Regexp
             RegExp.prototype.toJSON = RegExp.prototype.toString; 
@@ -47,7 +47,7 @@ class WebpackBundleUploaderPlugin{
                         this.lang = customLang;
                     }else{
                         this.lang = en;  
-                        console.log(errorColor, this.lang.LANGUAGE_LOAD_FAILED.replace('%s', this.options.lang) );
+                        cl.error( this.lang.LANGUAGE_LOAD_FAILED.replace('%s', this.options.lang) );
                     }
                 });
         }
@@ -63,10 +63,7 @@ class WebpackBundleUploaderPlugin{
      * @return {Promise}
      */
     initUploader( _cdnObject = null ){
-
-        this.cdn = {};
         const cdnObject = _cdnObject || this.options.cdn;
-
         if ( Array.isArray( cdnObject )  ){
             return Promise.all( cdnObject.map( cdn => this.initSingleCdn(cdn) ));
         }else{
@@ -82,16 +79,10 @@ class WebpackBundleUploaderPlugin{
      */
     initSingleCdn( cdnObject ){
    
-        return new Promise( (resolve, reject) =>{
+        return new Promise( async (resolve, reject) =>{
 
             switch ( cdnObject.type ){
                 case 'qiniu':
-
-                    if ( typeof this.cdn.qiniu !== 'undefined' ){
-                        resolve();
-                        return;
-                    }
-
                     if ( !cdnObject.secretKey || !cdnObject.accessKey ){
                         reject( this.lang.EMPTY_ACCESS_OR_SECRET.replace('%s', '七牛') );
                         return;
@@ -100,12 +91,6 @@ class WebpackBundleUploaderPlugin{
                     this.cdn.qiniu = new Qiniu( cdnObject.accessKey, cdnObject.secretKey, cdnObject.host );
                     break;
                 case 'txcos':
-
-                    if ( typeof this.cdn.txcos !== 'undefined' ){
-                        resolve();
-                        return;
-                    }
-
                     if ( !cdnObject.secretKey || !cdnObject.accessKey ){
                         reject( this.lang.EMPTY_ACCESS_OR_SECRET.replace('%s', '腾讯COS') );
                         return;
@@ -120,33 +105,16 @@ class WebpackBundleUploaderPlugin{
                 case 'aliyun':
                     break;
                 case 'ftp':
-
-                    if ( typeof this.cdn.ftp !== 'undefined' ){
-                        resolve();
-                        return;
-                    }
-
                     if ( typeof cdnObject.destPath === 'undefined' ){
                         reject( this.lang.INVALID_FTP_DEST_PATH );
                         return;
                     }
-
-                    require('./libs/ftp')( cdnObject )
-                    .then( ftpClient =>{
-                        this.cdn.ftp = ftpClient;
-                        resolve();
-                    })
-                    .catch( rejected =>{
-                        reject(rejected);
-                    });
+                    const ftp = require('./libs/ftp')( cdnObject );
+                    this.cdn.ftp = await ftp;
+ 
+                    resolve();
                     break;
                 case 's3':
-
-                    if ( typeof this.cdn.s3 !== 'undefined' ){
-                        resolve();
-                        return;
-                    }
-
                     if ( !cdnObject.secretKey || !cdnObject.accessKey ){
                         reject( this.lang.EMPTY_ACCESS_OR_SECRET.replace('%s', 's3') );
                         return;
@@ -197,7 +165,7 @@ class WebpackBundleUploaderPlugin{
                     });
                     return;
                 case 'txcos':
-                    const cosData = new Buffer( data );
+                    const cosData = Buffer.from( data );
                     this.cdn.txcos.putObject({
                         Bucket:cdn.bucket,
                         Region:cdn.host,
@@ -229,8 +197,8 @@ class WebpackBundleUploaderPlugin{
 
                             const upPath = shouldTest ? p.path:p;
                             const _path = upPath.endsWith('\/') ? upPath.substr(0, upPath.length - 1):upPath;
-                            const path = `${_path}/${name}`;
-                            uploadingTasks.push( this.cdn.ftp.putOrMkdir(data, path) );
+                            const _destPath = path.join(_path, name);
+                            uploadingTasks.push( this.cdn.ftp.putOrMkdir(data, _destPath) );
                         });
 
                         Promise
@@ -243,9 +211,10 @@ class WebpackBundleUploaderPlugin{
                         });
                     }else{
                         const _path = destPath.endsWith('\/') ? destPath.substr(0, destPath.length - 1):destPath;
-                        const path = `${_path}/${name}`;
+                        const _destPath = path.join(_path, name);
+    
                         this.cdn.ftp
-                        .putOrMkdir(data, path)
+                        .putOrMkdir(data, _destPath)
                         .then( response =>{
                             resolve( response );
                         })
@@ -255,7 +224,7 @@ class WebpackBundleUploaderPlugin{
                     }    
                     return;
                 case 's3':
-                    const s3Data = new Buffer( data );
+                    const s3Data = Buffer.from( data );
                     const contentType = cdn.contentType || 'text/plain';
                     const permission = cdn.permission || 'public-read';
                     const addHeaders = Object.assign({}, {
@@ -283,19 +252,18 @@ class WebpackBundleUploaderPlugin{
      * @description 
      * 删除过往打包文件
      * 
-     * @param {string} previousPath
      * wp.previous.json路径
      * 
      * @return {void}
      */
-    async deletePreviousUploads( previousPath ){
+    async deletePreviousUploads( ){
 
         //读取wp.previous.json文件
-        if ( !fs.existsSync(previousPath) ){
+        if ( !fs.existsSync( this.logoutputPath ) ){
             throw new Error(this.lang.PREVIOUS_LOG_NOT_EXISTS);
         }
 
-        const previousLog = fs.readFileSync( previousPath, 'utf8' );
+        const previousLog = fs.readFileSync( this.logoutputPath, 'utf8' );
 
         if ( previousLog && previousLog.Error ){
             throw ( previousLog.Error );   
@@ -314,7 +282,7 @@ class WebpackBundleUploaderPlugin{
         try {
             cdnDeleteResponse = await this.deletePreviousResources( _log );
         }catch ( e ){
-            throw e.message ? e.message:e;
+            throw e instanceof Error ? e:new Error( e );
         }
 
         if ( cdnDeleteResponse && typeof cdnDeleteResponse.error !== 'undefined' ){
@@ -325,9 +293,9 @@ class WebpackBundleUploaderPlugin{
             throw new Error( this.lang.INVALID_PREVIOUS_LOG_FILE );
         }
 
-        console.log( successColor , this.lang.DELETED_NUM_PREVIOUS_FILES.replace('%s', cdnDeleteResponse) );
+        cl.success( this.lang.DELETED_NUM_PREVIOUS_FILES.replace('%s', cdnDeleteResponse) );
 
-        fs.unlinkSync( previousPath );
+        fs.unlinkSync( this.logoutputPath );
     }
     
     /**
@@ -342,84 +310,86 @@ class WebpackBundleUploaderPlugin{
 
         return new Promise( async (resolve, reject) =>{
 
-            try {
-                await this.initUploader( log.cdn );
-            }catch( e ){
-                reject( errorColor, e.message ? e.message:e );
-            }
-
             if ( !Array.isArray( log.files ) || log.files.length <= 0 ){
                 reject(this.lang.EMPTY_PREVIOUS_LOG_FILE);
             }
 
             const isPrevMultiple = Array.isArray( log.cdn );
- 
-            if ( isPrevMultiple ){
 
-                let deletingCdnTypes = {};
-                let deletingPromises = [];
-    
-                log.cdn.forEach( cdn =>{
-                
-                    if ( !cdn.test ){
-                        return;
-                    }
+            this
+            .initUploader( log.cdn )
+            .catch( rejected => {
+                //加载过往上传实例出错
+                reject( errorColor, rejected.message ? rejected.message:rejected );
+            })
+            .then( () => {
+                if ( isPrevMultiple ){
 
-                    const re = cdn.test.match(/\/(.*)\/$/);
-
-                    if ( typeof re[1] === 'undefined' ){
-                        return;
-                    }
-       
-                    const tester = new RegExp( re[1] );
-
-                    log.files.forEach( file =>{
-                        if ( !tester.test( file.fileName ) ){
+                    let deletingCdnTypes = {};
+                    let deletingPromises = [];
+        
+                    log.cdn.forEach( cdn =>{
+                    
+                        if ( !cdn.test ){
                             return;
                         }
     
-                        if ( typeof deletingCdnTypes[cdn.type] === 'undefined' ){
-                            deletingCdnTypes[cdn.type] = {
-                                files:[file.fileName],
-                                cdn
-                            };
-                        }else{
-                            deletingCdnTypes[cdn.type].files.push( file.fileName );
+                        const re = cdn.test.match(/\/(.*)\/$/);
+    
+                        if ( typeof re[1] === 'undefined' ){
+                            return;
                         }
+           
+                        const tester = new RegExp( re[1] );
+    
+                        log.files.forEach( file =>{
+                            if ( !tester.test( file.fileName ) ){
+                                return;
+                            }
+        
+                            if ( typeof deletingCdnTypes[cdn.type] === 'undefined' ){
+                                deletingCdnTypes[cdn.type] = {
+                                    files:[file.fileName],
+                                    cdn
+                                };
+                            }else{
+                                deletingCdnTypes[cdn.type].files.push( file.fileName );
+                            }
+                        });
                     });
-                });
-
-                for ( let cdn in deletingCdnTypes ){
-                    if ( !deletingCdnTypes[cdn].files || deletingCdnTypes[cdn].files.length === 0 ){
-                        continue;
+    
+                    for ( let cdn in deletingCdnTypes ){
+                        if ( !deletingCdnTypes[cdn].files || deletingCdnTypes[cdn].files.length === 0 ){
+                            continue;
+                        }
+    
+                        deletingPromises.push(
+                            this.getDeletePromiseTask( deletingCdnTypes[cdn].files, deletingCdnTypes[cdn].cdn )
+                        );
+                    }
+    
+                    if ( deletingPromises.length > 0 ){
+                        resolve( 0 );
+                        return;
                     }
 
-                    deletingPromises.push(
-                        this.getDeletePromiseTask( deletingCdnTypes[cdn].files, deletingCdnTypes[cdn].cdn )
-                    );
+                    return Promise.all( deletingPromises );
+                }else{
+                    return this.getDeletePromiseTask( log.files, log.cdn );
                 }
+            })
+            .catch( rejected =>{
+                //删除任务出错
+                reject( rejected );
+            })
+            .then( deleted =>{
 
-                if ( deletingPromises.length > 0 ){
-                    Promise.all( deletingPromises )
-                    .then( deleted =>{
-                        const totalDeleted = deleted.reduce( (total, del) => total + del );
-                        resolve( totalDeleted );
-                    })
-                    .catch( rejecteds =>{
-                        reject( rejecteds );
-                    });
-                }
+                const deletedTotal = isPrevMultiple 
+                                   ? deleted.reduce( (total, del) => total + del )
+                                   : deleted; 
 
-            }else{
-                this.getDeletePromiseTask( log.files, log.cdn )
-                .then( deleted =>{
-                    resolve( deleted );
-                })
-                .catch( rejected =>{
-                    reject( rejected );
-                });
-            }
-            // reject(this.lang.CDN_TYPE_NOT_SUPPORTED);
+                resolve( deletedTotal );
+            });
         });
     }
 
@@ -437,7 +407,7 @@ class WebpackBundleUploaderPlugin{
                     const resources = files.map( file =>{
                         return {
                             bucket:cdn.bucket,
-                            fileName:file
+                            fileName:file.fileName
                         };
                     });
                     this.cdn.qiniu
@@ -476,24 +446,35 @@ class WebpackBundleUploaderPlugin{
 
                     if ( toMultiplePath ){
 
+                        let exisingPath = {};
+
                         destPath.forEach( p => {
                             const shouldTest = typeof p !== 'string' && p.test instanceof RegExp;
                             files.forEach( file => {
-                                if ( shouldTest && !p.test.test( file ) ){
+                                if ( shouldTest && !p.test.test( file.fileName ) ){
                                     return;
                                 }
 
                                 const upPath = shouldTest ? p.path:p;
                                 const _path = upPath.endsWith('\/') ? upPath.substr(0, upPath.length - 1):upPath;
-                                const path = `${_path}/${file.fileName}`;
-                                ftpDeletingTasks.push( this.cdn.ftp.deleteAwait( path ) );
+
+                                if ( typeof exisingPath[_path] !== 'undefined' ){
+                                    return;
+                                }
+
+                                exisingPath[_path] = true;
+
+                                ftpDeletingTasks.push(
+                                    this.cdn.ftp.rmdirAwait( _path, true)
+                                );
                             });
                         });
 
                     }else{
-                        const _path = cdn.destPath.endsWith('\/') ? cdn.destPath.substr(0, cdn.destPath.length - 1):cdn.destPath;
-                        const path = `${_path}/${file.fileName}`;
-                        ftpDeletingTasks.push( this.cdn.ftp.deleteAwait(path) );
+                        const _path = destPath.endsWith('\/') ? destPath.substr(0, destPath.length - 1):destPath;
+                        ftpDeletingTasks.push(
+                            this.cdn.ftp.rmdirAwait( _path, true)
+                        );
                     }
                     
 
@@ -501,8 +482,7 @@ class WebpackBundleUploaderPlugin{
                         Promise
                         .all( ftpDeletingTasks )
                         .then( responses => {
-                            console.log(responses);
-                            resolve(responses);
+                            resolve(files.length);
                         })
                         .catch( rejected => {
                             reject(rejected);
@@ -513,7 +493,8 @@ class WebpackBundleUploaderPlugin{
 
                     break;
                 case 's3':
-                    const s3Deleting = files.map( file => `/${file}`);
+                    const s3Deleting = files.map( file => `/${file.fileName}`);
+    
                     this.cdn.s3.deleteMultiple( s3Deleting, (err, res) =>{
                         if ( err ){
                             reject(err);
@@ -531,32 +512,27 @@ class WebpackBundleUploaderPlugin{
      * @description 
      * 处理部分CDN上传实例后续, 暂用于FTP
      * 
-     * @return {Promise}
+     * @param {Function | null} 结束插件回调函数
+     * 
+     * @return {void}
      */
-    async endUploader(){
+    endUploader( callback = null ){
 
-        return new Promise( (resolve, reject) =>{
+        cl.reset();
 
-            if ( typeof this.cdn === 'undefined' ){
-                reject('CDN为空');
-                return;
-            }
+        if ( typeof this.cdn === 'undefined' ){
+            if ( callback !== null ) callback();
+            return;
+        }
 
-            switch ( this.options.cdn.type ){
+        for (let cdn in this.cdn){
+            switch ( cdn ){
                 case 'ftp':
-                    this.cdn.ftp
-                    .destroy()
-                    .then( () =>{
-                        resolve();
-                    })
-                    .catch( rejected =>{
-                        reject(rejected);
-                    })
-                    return;
+                    if ( typeof this.cdn[cdn] !== 'undefined' ) this.cdn[cdn].destroy();
             }
+        }
 
-            resolve();
-        });
+        if ( callback !== null ) callback();
     }
 
     /**
@@ -691,11 +667,12 @@ class WebpackBundleUploaderPlugin{
             const { existsAt, _value, _name } = asset;
 
             let response, fileName;
- 
-            try {
+            try {                
                 if ( typeof _name === 'undefined' ){
-                    fileName = existsAt.replace(`${this.outputPath}\\`, '').replace(/\\/g, '/');
-                    const fileContent = fs.readFileSync( existsAt, 'utf8');
+                    //对于非js文件
+                    fileName = existsAt.replace( this.outputPath, '' );
+                    fileName = fileName.substr(1, fileName.length); //去除第一个斜杠
+                    const fileContent = fs.readFileSync( existsAt, 'utf8'); 
                     response = await this.upload( fileContent, fileName, cdn);
                 }else{
                     fileName = _name;
@@ -705,16 +682,16 @@ class WebpackBundleUploaderPlugin{
                 reject( this.lang.LOADING_FILE_ERROR.replace('%s', fileName).replace('%2s', e.message ? e.message:e) );
                 return;
             }
-            
+
             if ( this.options.deleteOutput ){
-                fs.unlinkSync( `${this.outputPath}\\${fileName}` );   
+                fs.unlinkSync( existsAt ); 
             }
     
             if ( typeof response.error !== 'undefined' ){
                 reject( this.lang.UPLOADING_ERROR.replace('%s', fileName).replace('%2s', response.error ? response.error:response.toString()) );
             }
 
-            console.log( successColor, `${this.lang.SINGLE_FILE_UPLOADED}: ${fileName}` );
+            cl.success( `${this.lang.SINGLE_FILE_UPLOADED}: ${fileName}` );
 
             resolve( {fileName} );
         });
@@ -731,137 +708,127 @@ class WebpackBundleUploaderPlugin{
      */
     async handleEmitted(compilation , callback = null){
 
-        console.log(resetColor);
+        cl.reset();
+
+        let uploaderError = false;
+        let previousOutput;
+        
         this
         .validateOptions()
+        .catch( rejected =>{
+            //验证参数出错
+            cl.error( rejected instanceof Error ? rejected.message:rejected );
+            this.endUploader( callback );
+        })
         .then( async () =>{
 
-            const outputOptions = compilation.outputOptions || compilation.options.output;
-            this.outputPath = outputOptions.path;
-            const previousPath = `${this.outputPath}\\wp.previous.json`;
-            const isMultipleCdn = Array.isArray( this.options.cdn );
+            const outputOptions = compilation.outputOptions || compilation.options;
+            this.outputPath = path.normalize( outputOptions.path || outputOptions.path.output );
+            this.logoutputPath =  path.resolve(this.outputPath, './wp.previous.json');
 
             //开始删除过往上传记录
             if ( this.options.deletePrevious ){
-                console.log( this.lang.DELETE_PREVIOUS_ENABLED );
+                cl.reset( this.lang.DELETE_PREVIOUS_ENABLED );
+
+                try {
+                    await this.deletePreviousUploads();
+                }catch( e ){
+                    cl.reset( this.lang.SKIP_DELETE_PREVIOUS_DUE_TO.replace('%s', e.message ? e.message:e) );
+                }
+            }
+            return this.initUploader();
+        })
+        .catch( rejected =>{
+            //加载上传CDN实例出错
+            cl.error( this.lang.INVALID_CDN_OPTIONS_LOADED.replace('%s', rejected)  );
+            this.endUploader( callback );
+            return;
+        })
+        .then( async () =>{
+            /*---------------- 加载上传文件 ----------------*/
+            cl.reset( this.lang.UPLOAD_START );
+       
+            previousOutput = {
+                cdn:this.options.cdn,
+                files:[]
+            };
+
+            let uploadingAssets = [];
+            const _test = this.options.cdn.test || /\.(js|css)$/; //用于单CDN上传时验证
+
+            for ( let asset in compilation.assets ){
+
+                let fileName;
+
+                const { existsAt } = compilation.assets[asset];
             
                 try {
-                    await this.deletePreviousUploads( previousPath );
-                }catch( e ){
-                    console.log( resetColor , this.lang.SKIP_DELETE_PREVIOUS_DUE_TO.replace('%s', e.message ? e.message:e) );
-                }
-
-            }
-
-            this
-            .initUploader()
-            .then( async () =>{
-                /*---------------- 开始上传 ----------------*/
-                let previousOutput = {
-                    cdn:this.options.cdn,
-                    files:[]
-                }
-                let uploaderError = false;
-
-                console.log( resetColor , this.lang.UPLOAD_START );
-
-                let uploadingAssets = [];
-                const _test = this.options.cdn.test || /\.(js|css)$/; //用于单CDN上传时验证
-
-                for ( let asset in compilation.assets ){
-
-                    let fileName;
-
-                    const { existsAt } = compilation.assets[asset];
-                
-                    try {
-                        //非js文件不会直接包括文件内容, 需要使用fs提取内容并手动提取文件名
-                        if ( isMultipleCdn ){
-                            for ( let cdn of this.options.cdn ){
-                                
-                                if ( !cdn.test.test( existsAt ) ){
-                                    continue;
-                                }
-
-                                uploadingAssets.push(
-                                    this.handleFileUpload(cdn, compilation.assets[asset] )
-                                );
-                            }
-                        }else{
-
-                            if ( !_test.test( existsAt ) ){
+                    //非js文件不会直接包括文件内容, 需要使用fs提取内容并手动提取文件名
+                    if ( this.isMultipleCdn ){
+                        for ( let cdn of this.options.cdn ){
+                            
+                            if ( !cdn.test.test( existsAt ) ){
                                 continue;
                             }
 
                             uploadingAssets.push(
-                                this.handleFileUpload(this.options.cdn, compilation.assets[asset] )
+                                this.handleFileUpload(cdn, compilation.assets[asset] )
                             );
                         }
-                    }catch( e ){
-                        uploaderError = true;
-                        console.log( errorColor , this.lang.LOADING_FILE_ERROR.replace('%s', fileName).replace('%2s', e.message ? e.message:e) );
-                        break;
-                    }
+                    }else{
 
-                    //一个文件出错则停止所有上传
-                }
-                
-                if ( uploadingAssets.length === 0 ){
-                    await this.endUploader();
-                    if ( callback !== null ) callback();
-                    return;
-                }
-
-                Promise
-                .all( uploadingAssets )
-                .then( async uploads =>{
-
-                    previousOutput.files = uploads;
-
-                    //处理不同CDN类型后续操作, 暂时只用于FTP
-                    await this.endUploader();
-
-                    //保存上传记录, 用于下一次删除
-                    if ( previousOutput.files.length > 0 ){
-                        try {
-                            fs.writeFileSync( previousPath, JSON.stringify( previousOutput ));
-                        }catch( e ){
-                            console.log(errorColor, this.lang.SAVING_LOG_ERROR.replace('%s', e.message ? e.message:e) );
+                        if ( !_test.test( existsAt ) ){
+                            continue;
                         }
+
+                        uploadingAssets.push(
+                            this.handleFileUpload(this.options.cdn, compilation.assets[asset] )
+                        );
                     }
+                }catch( e ){
+                    uploaderError = true;
+                    cl.error( this.lang.LOADING_FILE_ERROR.replace('%s', fileName).replace('%2s', e instanceof Error ? e.message:e) );
+                    this.endUploader( callback );
+                    break;
+                }
 
-                    if ( !uploaderError ){
-                        console.log(successColor, this.lang.ALL_FILE_UPLOADED );
-
-                        if ( this.options.deleteOutput ){
-                            console.log( resetColor, this.lang.DELETE_OUTPUT_ENABLED );
-                        }
-                    }
-
-                    console.log(resetColor);
-
-                    if ( callback !== null ) callback();
-                })
-                .catch( async rejecteds =>{
-                    //上传出错
-                    console.log( errorColor, rejecteds );
-                    await this.endUploader();
-                    if ( callback !== null ) callback();
-                });
-                /*---------------- 上传结束 ----------------*/
-            })
-            .catch( async rejected =>{
-                //加载上传实例出错
-                console.log( this.lang.INVALID_CDN_OPTIONS_LOADED.replace('%s', rejected) );
-                await this.endUploader();
-                if ( callback !== null ) callback();
-            });
+                //一个文件出错则停止所有上传
+            }
             
+            if ( uploadingAssets.length === 0 ){
+                this.endUploader( callback );
+                return;
+            }
+
+            return Promise.all( uploadingAssets );
         })
-        .catch( rejected =>{
-            //验证参数出错
-            console.log(rejected);
-            if ( callback !== null ) callback();
+        .catch( rejecteds =>{
+            //上传任务出错
+            cl.error( Array.isArray( rejecteds ) ? rejecteds.map( (rejected, index) => `${index + 1}. ${rejected instanceof Error ? rejected.message:rejected}` ).join("\n"):( rejecteds instanceof Error ? rejecteds.message:rejecteds ) );
+            this.endUploader( callback );
+        })
+        .then( uploads =>{
+
+            previousOutput.files = uploads;
+
+            //保存上传记录, 用于下一次删除
+            if ( Array.isArray( previousOutput.files ) && previousOutput.files.length > 0 ){
+                try {
+                    fs.writeFileSync( this.logoutputPath, JSON.stringify( previousOutput ));
+                }catch( e ){
+                    cl.error( this.lang.SAVING_LOG_ERROR.replace('%s',  e instanceof Error ? e.message:e ) );
+                }
+            }
+
+            if ( !uploaderError ){
+                cl.success( this.lang.ALL_FILE_UPLOADED );
+
+                if ( this.options.deleteOutput ){
+                    cl.reset( this.lang.DELETE_OUTPUT_ENABLED  );
+                }
+            }
+            /*---------------- 上传结束 ----------------*/
+            this.endUploader( callback ); //部分CDN诸如FTP需要手动结束进程
         });
     }
 

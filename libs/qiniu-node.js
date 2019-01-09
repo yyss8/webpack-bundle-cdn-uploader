@@ -30,7 +30,7 @@ class Qiniu {
 
         return new Promise( (resolve, reject) =>{
 
-            const file = data instanceof Buffer ? data:new Buffer( data );
+            const file = data instanceof Buffer ? data:Buffer.from( data );
             const fileSize = file.length;
 
             if ( fileSize <= 0 ){
@@ -264,13 +264,13 @@ class Qiniu {
      * @description 转码为七牛云可接收的格式
      */
     static safeEncode( content , encode = true ){
-        return encode ? new Buffer(content).toString('base64').replace(/\+/g, '-').replace(/\//g, '_')
+        return encode ? Buffer.from(content).toString('base64').replace(/\+/g, '-').replace(/\//g, '_')
                       : content.replace(/\+/g, '-').replace(/\//g, '_');
     }
 
     //解码七牛云信息
     static safeDecode( content ){
-        return new Buffer( content.replace(/\-/g, '+').replace(/\_/g , '/') , 'base64').toString();
+        return Buffer.from(content.replace(/\-/g, '+').replace(/\_/g , '/'), 'base64').toString();
     }
 
     static isTimestampValid( time ){

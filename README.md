@@ -62,6 +62,7 @@ module.exports = {
      * `port`: (FTP独有) FTP服务器的IP端口, 默认 `21`,
      * `user`: (FTP独有) FTP用户名, 默认 `anonymous`
      * `password`:(FTP独有) FTP密码, 默认 `anonymous@`
+     * `destPath`:(FTP独有) 输出文件存储路径, 如果`deletePrevious`开启则直接删除该文件夹, 所以请勿存放其它重要文件
      * `contentType` (S3独有), 输出格式, 否则诸如HTML可能会直接输出源码 (默认: text/plain)
      * `permission` (s3独有), s3权限设置, (默认:public-read)
      * `metas` (Only for s3) (可选) 输出Meta, 如果包含content-type则会覆盖上面的contentType参数

@@ -68,7 +68,7 @@ class AwaitableFtpClient extends Ftp{
             const isFile = /.*\..*$/.test( destPath );
             const splitted = destPath.split('\/');
             const pathToCheck = isFile ? splitted.slice(0, splitted.length - 1).join('/'):destPath;
-            
+
             try {
 
                 const foundList = await this.listAwait( pathToCheck );
@@ -88,6 +88,32 @@ class AwaitableFtpClient extends Ftp{
 
     }
 
+    putOrMkdirMultiple( inputs ){
+        return new Promise( (resolve, reject) => {
+            let existingPath = {};
+            let checkingPromises = [], creatingPromises = [], uploadPromises = [];
+        });
+    }
+
+    /**
+     * 
+     * @param {String} path 
+     * @param {Boolean} recursive 
+     * 
+     * @return {Promise}
+     */
+    rmdirAwait( path, recursive = false ){
+        return new Promise( (resolve, reject) => {
+            this.rmdir( path, recursive , err =>{
+                if ( err ){
+                    reject(err);
+                    return;
+                }
+                resolve(true);
+            });
+        });
+    }
+
 }
 
 const ftpClient = new AwaitableFtpClient();
@@ -100,9 +126,9 @@ module.exports = params =>{
 
              //连接成功后检查是否能成功获取给与路径
             try {
-
+        
                 const foundList = await ftpClient.listAwait( params.destPath );
-            
+                
                 if ( foundList.length === 0){
                     await ftpClient.mkdirAwait( params.destPath , true);
                 }
@@ -134,6 +160,5 @@ module.exports = params =>{
         });
 
         ftpClient.connect(params);
-
     });
 };
