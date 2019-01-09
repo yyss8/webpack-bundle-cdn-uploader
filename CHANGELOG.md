@@ -1,6 +1,6 @@
 # Changelog 改动记录
 
-## [0.3.2] - 2019-01-09
+## [0.4] - 2019-01-09
 
  * Duplicated file path issue fixed for Mac - 解决Mac下上传文件地址重复的问题
  * Switched from new Buffer to Buffer.from to avoid deprecated warnings - 更改Buffer使用方法避免过期警告
