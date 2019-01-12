@@ -62,20 +62,20 @@ module.exports = {
      * `port`: (FTP独有) FTP服务器的IP端口, 默认 `21`,
      * `user`: (FTP独有) FTP用户名, 默认 `anonymous`
      * `password`:(FTP独有) FTP密码, 默认 `anonymous@`
-     * `destPath`:(FTP独有) 输出文件存储路径, 如果`deletePrevious`开启则直接删除该文件夹, 所以请勿存放其它重要文件
+     * `destPath`:(FTP独有) 输出文件存储路径
      * `contentType` (S3独有), 输出格式, 否则诸如HTML可能会直接输出源码 (默认: text/plain)
      * `permission` (s3独有), s3权限设置, (默认:public-read)
      * `metas` (Only for s3) (可选) 输出Meta, 如果包含content-type则会覆盖上面的contentType参数
 - `deletePrevious`: (true|false) (默认false) 是否从CDN上删除上一次上传的bundle文件, 大部分存储提供商都可以对相同文件名进行覆盖, 所以无需开启, 主要用于更换cdn后删除原cdn信息
 - `deleteOutput`: (true|false)  (默认false) 是否删除webpack打包后的文件
 - `lang`: (en|cn|[自定义输出语言文件路径]) console.log输出语言, 默认(cn), 如果要输出自己的文字则传入语言文件地址
+- `logPath`:记录输出文件路径, (默认webpack输出路径)
 
 ### 注意
 
 - CDN参数传入Array时暂时只支持上传至不同CDN, 同CDN不同bucket待开发 
 - 如果使用了html打包插件那么publicPath记得设置为CDN地址而非本地目录地址, 同时其他使用了该地址的资源也都需要替换或者上传至CDN
 - 打包结束后会在webpack配置中的输出目录产生一个`wp.previous.json`文件记录上一次的打包以及输出配置, 如果需要在每次打包后删除CDN上的旧资源请不要删除这个文件
-- webpack 3 上下的ftp上传可能会无法自动结束node进程, 需要手动CTRL+C结束, webpack 4下貌似正常
 - 通过正则匹配上传js以及css文件至不同CDN虽然支持但是并不推荐, 因为该插件并不修改打包内容所以如果css地址不同需要手动修改输出的html文件, 甚至js内容. 
 - 上传HTML至AWS S3需要将CDN上的输出content-type更改为text/html, 否则将会输出html源码. 可以在aws s3控制台中将html文件的metadata添加或更改为`text/html`, 也可以在导入前CDN参数中传入`contentType`参数. 但是该参数只建议在html为你的唯一上传文件时使用, 否则你其他的打包文件也会被设置为text/html.
 

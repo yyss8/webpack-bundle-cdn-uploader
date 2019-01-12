@@ -1,4 +1,5 @@
 const Ftp = require('ftp');
+const fs = require ('fs');
 
 class AwaitableFtpClient extends Ftp{
 
@@ -38,10 +39,15 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
-    deleteAwait(path){
+    deleteAwait(path, ignoreError = false){
 
         return new Promise( (resolve, reject) =>{
-            this.delete( path, err =>{
+            this.delete( path, function(err){
+                
+                if ( ignoreError ){
+                    resolve( true );
+                    return;
+                }
 
                 if ( err ){
                     reject(err);
@@ -65,14 +71,10 @@ class AwaitableFtpClient extends Ftp{
     putOrMkdir( input, destPath ){
 
         return new Promise( async (resolve, reject) =>{
-            const isFile = /.*\..*$/.test( destPath );
-            const splitted = destPath.split('\/');
-            const pathToCheck = isFile ? splitted.slice(0, splitted.length - 1).join('/'):destPath;
-
+            const pathToCheck = destPath.replace(/^(.+)\/([^/]+)$/, '$1');
             try {
-
                 const foundList = await this.listAwait( pathToCheck );
-
+   
                 if ( foundList.length === 0 ){
                     await this.mkdirAwait( pathToCheck, true );
                 }
@@ -91,7 +93,60 @@ class AwaitableFtpClient extends Ftp{
     putOrMkdirMultiple( inputs ){
         return new Promise( (resolve, reject) => {
             let existingPath = {};
-            let checkingPromises = [], creatingPromises = [], uploadPromises = [];
+            let checkingPaths = [], creatingPromises = [], uploadPromises = [];
+
+            if ( !Array.isArray( inputs ) || typeof inputs[0] === 'undefined' ){
+                resolve( 0 );
+            }
+        
+            inputs.forEach( input => {
+                const { data, destPath } = input;
+                const isDir = /^(.+)\/([^/]+)$/.test( destPath );
+
+                if ( !isDir ){
+                    return;
+                }
+
+                const pathToCheck = destPath.replace(/^(.+)\/([^/]+)$/, '$1');
+    
+                if ( typeof existingPath[pathToCheck] === 'undefined' ){
+                    existingPath[pathToCheck] = true;
+                    checkingPaths.push(pathToCheck);
+                }
+     
+                uploadPromises.push(
+                    this.putAwait( data, destPath )
+                );
+            });
+
+            Promise
+            .all(checkingPaths.map( p => this.listAwait( p ) ) )
+            .then( async lists => {
+
+                lists.forEach( (list, index) => {
+                    if ( list.length === 0 ){
+                        creatingPromises.push(
+                            this.mkdirAwait( checkingPaths[index], true )
+                        );
+                    }
+                });
+
+                if ( !!creatingPromises[0] ){
+                    await Promise.all( creatingPromises );
+                }
+
+                return Promise.all( uploadPromises );
+            }, rejected =>{
+                reject(rejected);
+            })
+            .then( () => {
+                resolve(inputs.length);
+            }, rejected =>{
+                reject(rejected);
+            })
+            .catch( rejected =>{
+                reject( rejected );
+            });
         });
     }
 
@@ -122,28 +177,24 @@ module.exports = params =>{
     
     return new Promise( (resolve, reject) =>{
 
-        ftpClient.on('ready', async () =>{
+        ftpClient.on('ready', err =>{
 
-             //连接成功后检查是否能成功获取给与路径
-            try {
-        
-                const foundList = await ftpClient.listAwait( params.destPath );
-                
-                if ( foundList.length === 0){
-                    await ftpClient.mkdirAwait( params.destPath , true);
+            if ( err ){
+                resolve(err.code);
+                return;
+            }
+
+            ftpClient.list('/', err => {
+
+                if ( err ){
+                    reject(err);
+                    return;
                 }
 
                 resolve(ftpClient);
+            });
 
-            }catch( err ){
-
-                switch ( err.code ){
-                    case 553:
-                        reject(`FTP连接成功, 但是找不到路径: ${err.code}`);
-                    default:
-                        reject(`FTP连接成功, 但是获取列表失败: ${err}`);
-                }
-            }
+            resolve(ftpClient);
         });
 
         ftpClient.on('error', err =>{

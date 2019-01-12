@@ -1,5 +1,10 @@
 # Changelog 改动记录
 
+## [0.41] - 2019-01-12
+  
+  * Optimzed FTP upload and delete - 优化FTP上传和删除
+  * Dependencies updated - 更新依赖包
+
 ## [0.4] - 2019-01-09
 
  * Duplicated file path issue fixed for Mac - 解决Mac下上传文件地址重复的问题

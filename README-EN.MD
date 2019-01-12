@@ -62,13 +62,14 @@ module.exports = {
      * `port`: (Only for FTP) FTP Host Port, default `21`,
      * `user`: (Only for FTP) ftp username, default `anonymous`
      * `password`:(Only for FTP) ftp password, default `anonymous@`
-     * `destPath`:(Only for FTP) path to store output files, WILL BE DELETED if `deleteOutput` flag is true
+     * `destPath`:(Only for FTP) path to store output files
      * `contentType` (Only for S3), file output content-type (default:text/plain) (read note for uploading HTML file)
      * `permission` (Only for S3), file reading permission (default:public-read)
      * `metas` (Only for s3), file output metas (optional)
 - `deletePrevious`: (true|false) (default: false) Should delete previous uploaded files, most CDN storages overwrites files with same name. Therefore, it's most likely only needed for FTP or changing CDN storage provider
 - `deleteOutput`: (true|false)  (default: false) Should delete output bundle files
 - `lang`: (en|cn|[YOUR_LANG_FILE_PATH]) console.log output language, default: (cn), or your custom language file path, references to lang.js.sample file in example folder
+- `logPath`:upload log output path, (default: webpack output path)
 
 ### Note
 
