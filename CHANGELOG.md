@@ -1,6 +1,6 @@
 # Changelog 改动记录
 
-## [0.41] - 2019-01-12
+## [0.4.1] - 2019-01-12
   
   * Optimzed FTP upload and delete - 优化FTP上传和删除
   * Dependencies updated - 更新依赖包
