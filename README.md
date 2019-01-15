@@ -1,4 +1,4 @@
-# webpack-bundle-cdn-uploader
+# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.4.2-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
 
    <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
  
@@ -76,7 +76,7 @@ module.exports = {
 - CDN参数传入Array时暂时只支持上传至不同CDN, 同CDN不同bucket待开发 
 - 如果使用了html打包插件那么publicPath记得设置为CDN地址而非本地目录地址, 同时其他使用了该地址的资源也都需要替换或者上传至CDN
 - 打包结束后会在webpack配置中的输出目录产生一个`wp.previous.json`文件记录上一次的打包以及输出配置, 如果需要在每次打包后删除CDN上的旧资源请不要删除这个文件
-- 通过正则匹配上传js以及css文件至不同CDN虽然支持但是并不推荐, 因为该插件并不修改打包内容所以如果css地址不同需要手动修改输出的html文件, 甚至js内容. 
+- 通过正则匹配上传js以及css文件至不同CDN虽然支持但是并不推荐, 因为该插件并不修改打包内容所以如果css地址不同需要手动修改输出的html文件, 甚至js内容
 - 上传HTML至AWS S3需要将CDN上的输出content-type更改为text/html, 否则将会输出html源码. 可以在aws s3控制台中将html文件的metadata添加或更改为`text/html`, 也可以在导入前CDN参数中传入`contentType`参数. 但是该参数只建议在html为你的唯一上传文件时使用, 否则你其他的打包文件也会被设置为text/html.
 
 ### 欢迎在Issues里提各种需求和bug

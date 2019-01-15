@@ -1,5 +1,4 @@
 const Ftp = require('ftp');
-const fs = require ('fs');
 
 class AwaitableFtpClient extends Ftp{
 
@@ -43,9 +42,9 @@ class AwaitableFtpClient extends Ftp{
 
         return new Promise( (resolve, reject) =>{
             this.delete( path, function(err){
-                
+
                 if ( ignoreError ){
-                    resolve( true );
+                    resolve(0);
                     return;
                 }
 
@@ -54,7 +53,7 @@ class AwaitableFtpClient extends Ftp{
                     return;
                 }
 
-                resolve(true);
+                resolve(1);
             });
         });
     }
@@ -159,12 +158,27 @@ class AwaitableFtpClient extends Ftp{
      */
     rmdirAwait( path, recursive = false ){
         return new Promise( (resolve, reject) => {
-            this.rmdir( path, recursive , err =>{
+
+            this.list( path, (err, list) => {
                 if ( err ){
                     reject(err);
                     return;
                 }
-                resolve(true);
+
+                const listLength= list.length;
+                if ( listLength === 0 ){
+                    resolve(0);
+                    return;
+                }
+
+                this.rmdir( path, recursive, _err =>{
+                    if ( _err ){
+                        reject(_err);
+                        return;
+                    }
+
+                    resolve( listLength );
+                }); 
             });
         });
     }
