@@ -4,11 +4,7 @@ const path = require('path');
 
 class AwaitableFtpClient extends Ftp{
 
-    constructor( isWinHost = false ){
-        super();
-        this.isWinHost = isWinHost;
-    }
-
+    //覆盖或创建文件, 如果目标路径为文件夹则会报错
     putAwait(input, destPath, zcomp = false){
         return new Promise( (resolve,reject) =>{
             this.put(input, this.convertSlash( destPath ) , zcomp, err =>{
@@ -21,6 +17,7 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
+    //获取列表
     listAwait(destPath, zcomp = false){
         return new Promise( (resolve, reject) =>{
             this.list( this.convertSlash( destPath ) , zcomp, (err, list) =>{
@@ -33,6 +30,7 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
+    //创建目录
     mkdirAwait( destPath, recursive = false ){
         return new Promise( (resolve,reject) =>{
             this.mkdir( this.convertSlash( destPath ) , recursive , err =>{
@@ -45,6 +43,7 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
+    //删除文件
     deleteAwait(destPath, ignoreError = false){
 
         return new Promise( (resolve, reject) =>{
@@ -66,13 +65,15 @@ class AwaitableFtpClient extends Ftp{
     }
 
     /**
-     * @description 覆盖/创建文件, 如果路径不存在创建目标路径
+     * @description 
+     * 覆盖/创建文件, 如果路径不存在创建目标路径
+     * 如果创建目标路径为文件夹则会报错
      * @param {string|Buffer} input 
      * 上传内容
      * @param {string} destPath
      * 目标路径
      * 
-     * @return {err|void}
+     * @return {Promise}
      */
     putOrMkdir( input, destPath ){
 
@@ -165,10 +166,11 @@ class AwaitableFtpClient extends Ftp{
      * 
      * @return {Promise}
      */
-    rmdirAwait( path, recursive = false ){
+    rmdirAwait( destPath, recursive = false ){
         return new Promise( (resolve, reject) => {
 
-            this.list( path, (err, list) => {
+            const convertedPath = this.convertSlash( destPath );
+            this.list( convertedPath , (err, list) => {
                 if ( err ){
                     reject(err);
                     return;
@@ -180,7 +182,7 @@ class AwaitableFtpClient extends Ftp{
                     return;
                 }
 
-                this.rmdir( path, recursive, _err =>{
+                this.rmdir( convertedPath , recursive, _err =>{
                     if ( _err ){
                         reject(_err);
                         return;
@@ -192,16 +194,14 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
+    //根据不同平台转换斜杠
     convertSlash( _path ){
         return isWin32 ? _path.replace(/\\/g, "\/"):_path;
     }
 
-    
-
 }
 
 module.exports = params =>{
-    
     
     return new Promise( (resolve, reject) =>{
 

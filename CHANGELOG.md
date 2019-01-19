@@ -1,5 +1,9 @@
 # Changelog 改动记录
 
+## [0.4.4] - 2019-01-19
+  
+  * Custom output file name added - 允许自定义输出文件名称, 用于上传至不同路径
+
 ## [0.4.3] - 2019-01-19
   
   * Different file directory path fetching method used for FTP - 优化FTP文件路径获取方法

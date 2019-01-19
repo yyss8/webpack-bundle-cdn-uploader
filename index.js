@@ -744,7 +744,8 @@ class WebpackBundleUploaderPlugin{
 
             const outputOptions = compilation.outputOptions || compilation.options;
             this.outputPath = path.normalize( outputOptions.path || outputOptions.path.output );
-            this.logPath = this.options.logPath || path.resolve(this.outputPath, './wp.previous.json');
+            this.logName = this.options.logName || 'wp.previous.json';
+            this.logPath = this.options.logPath || path.resolve(this.outputPath, ".\/" + this.logName );
 
             //开始删除过往上传记录
             if ( this.options.deletePrevious ){

@@ -70,6 +70,7 @@ module.exports = {
 - `deleteOutput`: (true|false)  (默认false) 是否删除webpack打包后的文件
 - `lang`: (en|cn|[自定义输出语言文件路径]) console.log输出语言, 默认(cn), 如果要输出自己的文字则传入语言文件地址
 - `logPath`:记录输出文件路径, (默认webpack输出路径)
+- `logName`:记录输出文件名称, (默认: wp.previous) 如果需要上传至不同项目可以在这里设置避免删除过往记录
 
 ### 注意
 

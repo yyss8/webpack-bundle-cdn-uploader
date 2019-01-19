@@ -70,6 +70,7 @@ module.exports = {
 - `deleteOutput`: (true|false)  (default: false) Should delete output bundle files
 - `lang`: (en|cn|[YOUR_LANG_FILE_PATH]) console.log output language, default: (cn), or your custom language file path, references to lang.js.sample file in example folder
 - `logPath`:upload log output path, (default: webpack output path)
+- `logName`:upload log output name, (default: wp.previous)
 
 ### Note
 
