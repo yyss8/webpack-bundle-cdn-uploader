@@ -1,22 +1,29 @@
 const Ftp = require('ftp');
+const isWin32 = process.platform === 'win32';
+const path = require('path');
 
 class AwaitableFtpClient extends Ftp{
 
+    constructor( isWinHost = false ){
+        super();
+        this.isWinHost = isWinHost;
+    }
+
     putAwait(input, destPath, zcomp = false){
         return new Promise( (resolve,reject) =>{
-            this.put(input, destPath, zcomp = false, err =>{
+            this.put(input, this.convertSlash( destPath ) , zcomp, err =>{
                 if ( err ){
                     reject(err);
                     return;
                 }
-                resolve(true);
+                resolve(1);
             });
         });
     }
 
-    listAwait(path, zcomp = false){
+    listAwait(destPath, zcomp = false){
         return new Promise( (resolve, reject) =>{
-            this.list( path, zcomp, (err, list) =>{
+            this.list( this.convertSlash( destPath ) , zcomp, (err, list) =>{
                 if ( err ){
                     reject(err);
                     return;
@@ -26,9 +33,9 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
-    mkdirAwait( path, recursive = false ){
+    mkdirAwait( destPath, recursive = false ){
         return new Promise( (resolve,reject) =>{
-            this.mkdir( path, recursive , err =>{
+            this.mkdir( this.convertSlash( destPath ) , recursive , err =>{
                 if ( err ){
                     reject( err );
                 }
@@ -38,10 +45,10 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
-    deleteAwait(path, ignoreError = false){
+    deleteAwait(destPath, ignoreError = false){
 
         return new Promise( (resolve, reject) =>{
-            this.delete( path, function(err){
+            this.delete( this.convertSlash( destPath ) , function(err){
 
                 if ( ignoreError ){
                     resolve(0);
@@ -70,17 +77,19 @@ class AwaitableFtpClient extends Ftp{
     putOrMkdir( input, destPath ){
 
         return new Promise( async (resolve, reject) =>{
-            const pathToCheck = destPath.replace(/^(.+)\/([^/]+)$/, '$1');
+ 
+            const pathToCheck = path.dirname(destPath);
+
             try {
                 const foundList = await this.listAwait( pathToCheck );
-   
+
                 if ( foundList.length === 0 ){
                     await this.mkdirAwait( pathToCheck, true );
                 }
                 
                 await this.putAwait(input, destPath);
     
-                resolve(true);
+                resolve(1);
 
             }catch( e ){
                 reject(e);
@@ -106,7 +115,7 @@ class AwaitableFtpClient extends Ftp{
                     return;
                 }
 
-                const pathToCheck = destPath.replace(/^(.+)\/([^/]+)$/, '$1');
+                const pathToCheck = path.dirname( destPath );
     
                 if ( typeof existingPath[pathToCheck] === 'undefined' ){
                     existingPath[pathToCheck] = true;
@@ -183,13 +192,20 @@ class AwaitableFtpClient extends Ftp{
         });
     }
 
-}
+    convertSlash( _path ){
+        return isWin32 ? _path.replace(/\\/g, "\/"):_path;
+    }
 
-const ftpClient = new AwaitableFtpClient();
+    
+
+}
 
 module.exports = params =>{
     
+    
     return new Promise( (resolve, reject) =>{
+
+        const ftpClient = new AwaitableFtpClient();
 
         ftpClient.on('ready', err =>{
 

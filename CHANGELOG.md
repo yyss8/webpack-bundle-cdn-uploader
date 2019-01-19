@@ -1,5 +1,9 @@
 # Changelog 改动记录
 
+## [0.4.3] - 2019-01-19
+  
+  * Different file directory path fetching method used for FTP - 优化FTP文件路径获取方法
+
 ## [0.4.2] - 2019-01-15
   
   * Optimzed FTP upload and delete - 优化FTP上传和删除功能

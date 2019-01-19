@@ -14,6 +14,8 @@ class WebpackBundleUploaderPlugin{
         this.loadLanguage();
         this.isMultipleCdn = Array.isArray( this.options.cdn );
         this.cdn = {};
+        this.isEnded = false;
+
         if ( !RegExp.toJSON ){
             //Regexp本身不带toJson方法, 需要toJson保存用于筛选的Regexp
             RegExp.prototype.toJSON = RegExp.prototype.toString; 
@@ -705,7 +707,9 @@ class WebpackBundleUploaderPlugin{
                 reject( this.lang.UPLOADING_ERROR.replace('%s', fileName).replace('%2s', response.error ? response.error:response.toString()) );
             }
 
-            cl.success( `${this.lang.SINGLE_FILE_UPLOADED}: ${fileName}` );
+            if ( !this.isEnded ){
+                cl.success( `${this.lang.SINGLE_FILE_UPLOADED}: ${fileName}` );
+            }
 
             resolve( {fileName} );
         });
@@ -830,7 +834,10 @@ class WebpackBundleUploaderPlugin{
             }
 
             if ( this.count.uploading === this.count.uploaded ){
-                cl.success( this.lang.ALL_FILE_UPLOADED );
+                
+                if ( !this.isEnded ){
+                    cl.success( this.lang.ALL_FILE_UPLOADED );
+                }
 
                 if ( this.options.deleteOutput ){
 
