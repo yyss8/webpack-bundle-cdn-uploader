@@ -1,15 +1,15 @@
-# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.4.2-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
+# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.4.7-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
 
    <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
 
 [中文翻译](https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/README.md)
 
-    An open-box webpack plugin to upload your compiled bundle files to CDN stroages or FTP server
+#### An open-box webpack plugin to upload your compiled bundle files to CDN stroages or FTP server
 
 ### Tested Environments
 
  - webpack 3@3.12.0
- - webpack 4@4.25.1
+ - webpack 4@4.35.0
 
 ### Installation/Usage
 
@@ -74,7 +74,7 @@ module.exports = {
 
 ### Note
 
-- At this moment (v0.3), the plugin only support uploading files to single or different CDN storages, uploading files to different buckets of same CDN will be supported in future releases.
+- At this moment (v0.4.7), the plugin only support uploading files to single or different CDN storages, uploading files to different buckets of same CDN will be supported in future releases.
 - if a webpack HTML plugin like `html-webpack-plugin` is used, the publicPath should be changed to CDN url instaed of a local path
 - a file named `wp.previous.json` will be generated after each compile to record the previous upload details, please don't delete this file if you want this plugin to delete previous upload files
 - try to CTRL+C to end process if the webpack process is ended automatically with webpack 3

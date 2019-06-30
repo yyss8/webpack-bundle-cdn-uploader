@@ -1,15 +1,15 @@
-# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.4.2-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
+# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.4.7-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
 
    <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
  
 [ENGLISH VERSION](https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/README-EN.MD)
 
-    在Webpack打包完成后自动将打包文件上传至对应CDN或FTP, 开箱即用.
+#### 在Webpack打包完成后自动将打包文件上传至对应CDN或FTP, 开箱即用.
 
 ### 测试环境
 
  - webpack 3@3.12.0
- - webpack 4@4.25.1
+ - webpack 4@4.35.0
 
 ### 安装/使用
 
