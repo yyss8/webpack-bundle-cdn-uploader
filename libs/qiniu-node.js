@@ -133,7 +133,6 @@ class Qiniu {
      * 统一指定操作
      */
     batchAction( resources, action = ''){
-
         return new Promise( (resolve, reject) =>{
 
             if ( !Array.isArray( resources ) || resources.length <= 0 ){
@@ -173,7 +172,6 @@ class Qiniu {
 
             postRequest.write('');
             postRequest.end();
-
         });
 
     }
@@ -244,13 +242,11 @@ class Qiniu {
 
         }
 
-
         return _params;
     }
 
     //根据时间随机生成不重复文件名并替换-为_避免与七牛云图片样式冲突
     static getRandomKey(orgUrl = '' , prefix = ''){
-
         const date = new Date();
 
         const randomText = date.getMonth() + date.getDay() + date.getHours() + date.getMinutes();

@@ -4,6 +4,7 @@ const _supportedCdns = ['qiniu', 'txcos', 'ftp', 's3'];
 const fs = require('fs');
 const readline = require('readline');
 const path = require('path');
+const isWin32 = process.platform === 'win32';
 
 const cl = require('./libs/color-log');
 
@@ -633,7 +634,7 @@ class WebpackBundleUploaderPlugin{
                 });
 
                 if ( validating.length > 0 ){
-                    Promise
+                    return Promise
                     .all( validating )
                     .then( () =>{
                         
@@ -657,7 +658,7 @@ class WebpackBundleUploaderPlugin{
 
             }else{
                 try {
-                    this.validateOption( this.options.cdn );
+                    this.validateOption(this.options.cdn);
                     resolve();
                 }catch( e ){
                     reject(e.message);
@@ -690,10 +691,9 @@ class WebpackBundleUploaderPlugin{
             try {                
                 if ( typeof _name === 'undefined' ){
                     //对于非js文件
-                    fileName = existsAt.replace( this.outputPath, '' );
-                    fileName = fileName.substr(1, fileName.length); //去除第一个斜杠
+                    fileName = this.getNonJsFileName(existsAt);
                     const fileContent = fs.readFileSync( existsAt, 'utf8'); 
-                    response = await this.upload( fileContent, fileName, cdn);
+                    response = await this.upload( fileContent,  isWin32 ? fileName.replace(/\\/g, "\/") : fileName , cdn);
                 }else{
                     fileName = _name;
                     response = await this.upload( _value, _name, cdn );
@@ -757,6 +757,7 @@ class WebpackBundleUploaderPlugin{
                     cl.reset( this.lang.SKIP_DELETE_PREVIOUS_DUE_TO.replace('%s', e.message ? e.message:e) );
                 }
             }
+
             return this.initUploader();
         }, rejected =>{
             //验证参数出错
@@ -874,6 +875,13 @@ class WebpackBundleUploaderPlugin{
         if ( typeof this.cdn.ftp !== 'undefined' ){
             this.cdn.ftp.end();
         }
+    }
+
+    getNonJsFileName(existsAt) {
+        let name = existsAt.replace(this.outputPath, '');
+        name = name.substr(1, name.length); //去除第一个斜杠;
+
+        return isWin32 ? name.replace(/\\/g, "\/") : name;
     }
 
     apply(compiler){

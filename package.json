@@ -25,7 +25,7 @@
     "webpack FTP upload"
   ],
   "dependencies": {
-    "cos-nodejs-sdk-v5": "^2.5.6",
+    "cos-nodejs-sdk-v5": "^2.5.9",
     "ftp": "^0.3.10",
     "knox": "^0.9.2"
   }
