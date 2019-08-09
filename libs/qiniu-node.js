@@ -1,5 +1,5 @@
-const https = require('https');
 const crypto = require('crypto');
+const request = require('request');
 
 const resourceUrl = 'rsf.qbox.me';
 const rfUrl = 'rs.qiniu.com';
@@ -31,7 +31,7 @@ class Qiniu {
       const fileSize = file.length;
 
       if (fileSize <= 0) {
-        reject('上传文件数据为空');
+        reject(new Error('上传文件数据为空'));
       }
 
       const uploadParams = Qiniu.haveUploadParamsReady(bucket, '', params);
@@ -45,34 +45,34 @@ class Qiniu {
       const host = this.getUploadHost();
 
       if (!host) {
-        reject(`无效上传地区: ${this.host}`);
+        reject(new Error(`无效上传地区: ${this.host}`));
         return;
       }
 
-      const postRequest = https.request(
+      const uploadUrl = `https://${this.getUploadHost()}/putb64/${fileSize}/key/${encodedKey}`;
+
+      request.post(
+        uploadUrl,
         {
-          host: this.getUploadHost(),
-          path: `/putb64/${fileSize}/key/${encodedKey}`,
-          method: 'POST',
-          port: 443,
           headers: {
             'Content-Type': 'application/octet-stream',
             Authorization: authorization
-          }
+          },
+          body: file.toString('base64')
         },
-        res => {
-          res.on('data', _response => {
-            resolve(JSON.parse(_response));
-          });
+        (err, response) => {
+          if (err) {
+            reject(err);
+            return;
+          }
 
-          res.on('error', error => {
-            reject(error);
-          });
+          try {
+            resolve(JSON.parse(response.body));
+          } catch (e) {
+            reject(e);
+          }
         }
       );
-
-      postRequest.write(file.toString('base64'));
-      postRequest.end();
     });
   }
 
@@ -82,7 +82,7 @@ class Qiniu {
   list(bucket, fileName = '', limit = 1000) {
     return new Promise((resolve, reject) => {
       if (bucket === '') {
-        reject('Bucket不能为空');
+        reject(new Error('Bucket不能为空'));
         return;
       }
 
@@ -92,28 +92,30 @@ class Qiniu {
         limit
       };
 
-      const path = `/list?${Qiniu.buildQueryString(params)}`;
       const authorization = `QBox ${this.fetchRegularToken(`${path}\n`)}`;
+      const url = `https://${resourceUrl}/list?${Qiniu.buildQueryString(params)}`;
 
-      https.get(
+      request.get(
+        url,
         {
-          host: resourceUrl,
-          path,
-          method: 'GET',
-          port: 443,
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             Authorization: authorization
           }
         },
-        res => {
-          res.on('data', _response => {
-            resolve(JSON.parse(_response));
-          });
+        (err, response) => {
+          if (err) {
+            reject(err);
+            return;
+          }
 
-          res.on('error', error => {
-            reject(error);
-          });
+          try {
+            const body = JSON.parse(response.body);
+
+            resolve(body);
+          } catch (e) {
+            reject(e);
+          }
         }
       );
     });
@@ -130,7 +132,7 @@ class Qiniu {
   batchAction(resources, action = '') {
     return new Promise((resolve, reject) => {
       if (!Array.isArray(resources) || resources.length <= 0) {
-        reject('删除资源列表为空');
+        reject(new Error('删除资源列表为空'));
       }
 
       const resourceQuery =
@@ -147,30 +149,30 @@ class Qiniu {
 
       const authorization = `QBox ${this.fetchRegularToken(`${resourceQuery}\n`)}`;
 
-      const postRequest = https.request(
+      const batchUrl = `https://${rfUrl}${resourceQuery}`;
+
+      request.post(
+        batchUrl,
         {
-          host: rfUrl,
-          path: resourceQuery,
-          method: 'POST',
-          port: 443,
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             Authorization: authorization
           }
         },
-        res => {
-          res.on('data', _response => {
-            resolve(JSON.parse(_response).length);
-          });
+        (err, response) => {
+          if (err) {
+            reject(err);
+            return;
+          }
 
-          res.on('error', error => {
-            reject(error);
-          });
+          try {
+            const body = JSON.parse(response.body);
+            resolve(body.length);
+          } catch (e) {
+            reject(e);
+          }
         }
       );
-
-      postRequest.write('');
-      postRequest.end();
     });
   }
 
