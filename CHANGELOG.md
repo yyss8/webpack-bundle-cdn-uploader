@@ -1,5 +1,10 @@
 # Changelog 改动记录
 
+## [0.5.2] - 2019-08-08
+
+- Fixes incorrect file deleted number of Qiniu library - 修复七牛模块返回错误删除数.
+- Adds webpack to dependency - 添加Webpack至依赖.
+
 ## [0.5.1] - 2019-08-08
 
 - Updates change log file - 更新改动记录.

@@ -1,3 +1,8 @@
+/**
+ * @file 
+ * 翻译文件
+ */
+
 module.exports = {
   en: {
     DUPLICATE_REGEX_FOUND: 'Upload task terminated due to duplicate Regex pattern found',

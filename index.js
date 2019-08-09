@@ -1,12 +1,14 @@
+// @ts-check
+/** @typedef {import("webpack/lib/Compiler.js")} WebpackCompiler */
 'use strict';
 
-const _supportedCdns = ['qiniu', 'txcos', 'ftp', 's3'];
 const fs = require('fs');
 const readline = require('readline');
 const path = require('path');
-const isWin32 = process.platform === 'win32';
-
 const cl = require('./libs/color-log');
+
+const SUPPORTED_CDNS = ['qiniu', 'txcos', 'ftp', 's3'];
+const IS_WIN_32 = process.platform === 'win32';
 
 class WebpackBundleUploaderPlugin {
   constructor(options) {
@@ -16,7 +18,7 @@ class WebpackBundleUploaderPlugin {
     this.cdn = {};
     this.isEnded = false;
 
-    if (!RegExp.toJSON) {
+    if (typeof RegExp.toJSON === 'undefined') {
       //Regexp本身不带toJson方法, 需要toJson保存用于筛选的Regexp
       RegExp.prototype.toJSON = RegExp.prototype.toString;
     }
@@ -24,7 +26,7 @@ class WebpackBundleUploaderPlugin {
 
   /**
    * @description
-   * 加载语言文件, 如果为路径则可加载自定义文件
+   * 加载语言文件, 如果为路径则可加载自定义文件.
    */
   loadLanguage() {
     const { en, cn } = require('./lang');
@@ -57,7 +59,7 @@ class WebpackBundleUploaderPlugin {
   /**
    * @description 初始化各CDN实例
    *
-   * @param {object} cdnObject
+   * @param {object} _cdnObject
    * CDN参数
    *
    * @return {Promise}
@@ -74,6 +76,9 @@ class WebpackBundleUploaderPlugin {
   /**
    * @description
    * 初始化单个CDN实例
+   *
+   * @param {object} cdnObject
+   * CDN参数
    *
    * @return {Promise}
    */
@@ -103,6 +108,10 @@ class WebpackBundleUploaderPlugin {
         case 'aliyun':
           break;
         case 'ftp':
+          if (typeof this.cdn.ftp !== 'undefined' && this.cdn.ftp !== null) {
+            resolve();
+          }
+
           if (typeof cdnObject.destPath === 'undefined') {
             reject(this.lang.INVALID_FTP_DEST_PATH);
             return;
@@ -220,6 +229,9 @@ class WebpackBundleUploaderPlugin {
                 resolve(uploaded);
               })
               .catch(rejected => {
+                if (!rejected) {
+                  return;
+                }
                 this.count.errored += Array.isArray(rejected) ? rejected.length : 1;
                 reject(rejected);
               });
@@ -278,24 +290,22 @@ class WebpackBundleUploaderPlugin {
    *
    * wp.previous.json路径
    *
-   * @return {void}
+   * @return {Promise}
    */
   async deletePreviousUploads() {
     //读取wp.previous.json文件
-    if (!fs.existsSync(this.logPath)) {
+    let previousLog;
+
+    try {
+      previousLog = fs.readFileSync(this.logPath, 'utf8');
+    } catch (e) {
       throw new Error(this.lang.PREVIOUS_LOG_NOT_EXISTS);
     }
 
-    const previousLog = fs.readFileSync(this.logPath, 'utf8');
-
-    if (previousLog && previousLog.Error) {
-      throw previousLog.Error;
-    }
-
-    let _log;
+    let previousLogData;
 
     try {
-      _log = JSON.parse(previousLog);
+      previousLogData = JSON.parse(previousLog);
     } catch (e) {
       throw new Error(this.lang.INVALID_PREVIOUS_LOG_FILE);
     }
@@ -303,7 +313,7 @@ class WebpackBundleUploaderPlugin {
     //从CDN存储中删除旧资源
     let cdnDeleteResponse;
     try {
-      cdnDeleteResponse = await this.deletePreviousResources(_log);
+      cdnDeleteResponse = await this.deletePreviousResources(previousLogData);
     } catch (e) {
       throw e instanceof Error ? e : new Error(e);
     }
@@ -317,7 +327,11 @@ class WebpackBundleUploaderPlugin {
     }
 
     cl.success(this.lang.DELETED_NUM_PREVIOUS_FILES.replace('%s', cdnDeleteResponse));
+
     fs.unlinkSync(this.logPath);
+
+    // 完成任务后尝试关闭ftp连接.
+    this.endFtp();
   }
 
   /**
@@ -381,8 +395,9 @@ class WebpackBundleUploaderPlugin {
                   this.getCdnDeleteTask(deletingCdnTypes[cdn].files, deletingCdnTypes[cdn].cdn)
                 );
               }
-              if (!!deletingPromises[0]) {
+              if (deletingPromises.length === 0) {
                 resolve(0);
+                return;
               }
 
               return Promise.all(deletingPromises);
@@ -392,7 +407,7 @@ class WebpackBundleUploaderPlugin {
           },
           rejected => {
             //加载过往上传实例出错
-            cl.error(rejected.message ? rejected.message : rejected);
+            cl.error(rejected);
           }
         )
         .then(
@@ -524,6 +539,9 @@ class WebpackBundleUploaderPlugin {
                 resolve(deleted);
               })
               .catch(rejected => {
+                if (!rejected) {
+                  return;
+                }
                 reject(rejected);
               });
           } else {
@@ -557,7 +575,7 @@ class WebpackBundleUploaderPlugin {
       throw new Error(this.lang.EMPTY_CDN_CONFIG);
     }
 
-    if (typeof cdn.type === 'undefined' || _supportedCdns.indexOf(cdn.type) === -1) {
+    if (typeof cdn.type === 'undefined' || SUPPORTED_CDNS.indexOf(cdn.type) === -1) {
       throw new Error(
         `${this.lang.CDN_TYPE_NOT_SUPPORTED}: ${cdn.type}${
           index !== -1 ? ` CDN index:${index}` : ''
@@ -596,7 +614,7 @@ class WebpackBundleUploaderPlugin {
                 return;
               }
 
-              if (typeof cdn.test === 'undefined' || !cdn.test instanceof RegExp) {
+              if (typeof cdn.test === 'undefined' || cdn.test instanceof RegExp) {
                 __reject(`${this.lang.INVALID_REGEX} ${index !== -1 ? `, Index: ${index}` : ''}`);
                 return;
               }
@@ -679,7 +697,7 @@ class WebpackBundleUploaderPlugin {
           const fileContent = fs.readFileSync(existsAt, 'utf8');
           response = await this.upload(
             fileContent,
-            isWin32 ? fileName.replace(/\\/g, '/') : fileName,
+            IS_WIN_32 ? fileName.replace(/\\/g, '/') : fileName,
             cdn
           );
         } else {
@@ -720,7 +738,7 @@ class WebpackBundleUploaderPlugin {
    * @param {object} compilation
    * @param {function|null} callback
    *
-   * @return {void}
+   * @return {Promise}
    */
   async handleEmitted(compilation, callback = null) {
     cl.reset();
@@ -760,8 +778,8 @@ class WebpackBundleUploaderPlugin {
         },
         rejected => {
           //验证参数出错
-          cl.error(rejected instanceof Error ? rejected : new Error(rejected));
-          if (callback !== null) callback();
+          cl.error(rejected);
+          this.handleCallback(callback);
         }
       )
       .then(
@@ -798,14 +816,13 @@ class WebpackBundleUploaderPlugin {
                 );
               }
             } catch (e) {
-              uploaderError = true;
               cl.error(
                 this.lang.LOADING_FILE_ERROR.replace('%s', fileName).replace(
                   '%2s',
                   e instanceof Error ? e.message : e
                 )
               );
-              if (callback !== null) callback();
+              this.handleCallback(callback);
               break;
             }
 
@@ -813,7 +830,7 @@ class WebpackBundleUploaderPlugin {
           }
 
           if (uploadingAssets.length === 0) {
-            if (callback !== null) callback();
+            this.handleCallback(callback);
             return;
           }
 
@@ -826,7 +843,7 @@ class WebpackBundleUploaderPlugin {
       )
       .then(
         uploads => {
-          previousOutput.files = uploads;
+          previousOutput.files = uploads || [];
 
           //保存上传记录, 用于下一次删除
           if (Array.isArray(previousOutput.files) && previousOutput.files.length > 0) {
@@ -861,7 +878,7 @@ class WebpackBundleUploaderPlugin {
 
           /*---------------- 上传结束 ----------------*/
           cl.colorParts(this.lang.FINAL_OUTPUT(this.count));
-          if (callback !== null) callback();
+          this.handleCallback(callback);
         },
         rejecteds => {
           //上传任务出错
@@ -878,38 +895,56 @@ class WebpackBundleUploaderPlugin {
               : rejecteds
           );
           this.isEnded = true;
-          if (callback !== null) callback();
+          this.handleCallback(callback);
         }
       );
   }
 
   /**
    * ftp需要手动结束进程
+   * @returns {void}
    */
   endFtp() {
-    if (typeof this.cdn.ftp !== 'undefined') {
+    if (typeof this.cdn.ftp !== 'undefined' && this.cdn.ftp !== null) {
       this.cdn.ftp.end();
+      this.cdn.ftp = null;
     }
   }
 
+  /**
+   * 统一处理结束callback
+   */
+  handleCallback(callback) {
+    this.endFtp();
+    if (callback !== null) callback();
+  }
+
+  /**
+   * 获取非js资源文件名
+   *
+   * @param {string} existsAt
+   *
+   * @returns {string}
+   *   文件名
+   */
   getNonJsFileName(existsAt) {
     let name = existsAt.replace(this.outputPath, '');
     name = name.substr(1, name.length); //去除第一个斜杠;
 
-    return isWin32 ? name.replace(/\\/g, '/') : name;
+    return IS_WIN_32 ? name.replace(/\\/g, '/') : name;
   }
 
+  /**
+   * @param {WebpackCompiler} compiler
+   */
   apply(compiler) {
     //webpack版本兼容
     if (compiler.hooks) {
       //webpack 4
-      compiler.hooks.afterEmit.tapAsync('BundleUploaderPlugin', this.handleEmitted.bind(this));
-
-      compiler.hooks.done.tap('BundleUploaderPlugin', this.endFtp.bind(this));
+      compiler.hooks.afterEmit.tapAsync('WpBundleUploaderPlugin', this.handleEmitted.bind(this));
     } else {
       //webpack 3
       compiler.plugin('after-emit', this.handleEmitted.bind(this));
-      compiler.plugin('done', this.endFtp.bind(this));
     }
   }
 }

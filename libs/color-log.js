@@ -1,3 +1,7 @@
+/**
+ * @file 输出不同颜色的string
+ */
+
 class ColorLog {
   constructor() {
     this.resetColor = '\x1b[0m';
@@ -10,7 +14,7 @@ class ColorLog {
   }
 
   error(text = '') {
-    console.log(this.errorColor, text);
+    console.log(this.errorColor, text instanceof Error ? text.message : text);
   }
 
   reset(text = '') {
