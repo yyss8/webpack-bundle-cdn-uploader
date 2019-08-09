@@ -8,8 +8,8 @@
 
 ### Tested Environments
 
- - webpack 3@3.12.0
- - webpack 4@4.35.0
+- webpack 3@3.12.0
+- webpack 4@4.35.0
 
 ### Installation/Usage
 
@@ -53,21 +53,21 @@ module.exports = {
 ### Configurations
 
 - `cdn`: `object|array` CDN options, pass in array for uploading bundle files to different CDN storages
-     * `type`:`qiniu|txcos|s3|ftp` CDN type, (required)
-     * `bucket`: Bucket name, (optional for FTP) 
-     * `test`:Regex pattern, default (/\.css|\.js/) (required for uploading to multiple CDN)
-     * `accessKey`: CDN API-KEY or Access key: (required)
-     * `secretKey`: CDN Secret Key: (required)
-     * `host`: CDN area code, (not required for S3, use as hostname for FTP)
-     * `port`: (Only for FTP) FTP Host Port, default `21`,
-     * `user`: (Only for FTP) ftp username, default `anonymous`
-     * `password`:(Only for FTP) ftp password, default `anonymous@`
-     * `destPath`:(Only for FTP) path to store output files
-     * `contentType` (Only for S3), file output content-type (default:text/plain) (read note for uploading HTML file)
-     * `permission` (Only for S3), file reading permission (default:public-read)
-     * `metas` (Only for s3), file output metas (optional)
+  - `type`:`qiniu|txcos|s3|ftp` CDN type, (required)
+  - `bucket`: Bucket name, (optional for FTP)
+  - `test`:Regex pattern, default (/\.css|\.js/) (required for uploading to multiple CDN)
+  - `accessKey`: CDN API-KEY or Access key: (required)
+  - `secretKey`: CDN Secret Key: (required)
+  - `host`: CDN area code, (not required for S3, use as hostname for FTP)
+  - `port`: (Only for FTP) FTP Host Port, default `21`,
+  - `user`: (Only for FTP) ftp username, default `anonymous`
+  - `password`:(Only for FTP) ftp password, default `anonymous@`
+  - `destPath`:(Only for FTP) path to store output files
+  - `contentType` (Only for S3), file output content-type (default:text/plain) (read note for uploading HTML file)
+  - `permission` (Only for S3), file reading permission (default:public-read)
+  - `metas` (Only for s3), file output metas (optional)
 - `deletePrevious`: (true|false) (default: false) Should delete previous uploaded files, most CDN storages overwrites files with same name. Therefore, it's most likely only needed for FTP or changing CDN storage provider
-- `deleteOutput`: (true|false)  (default: false) Should delete output bundle files
+- `deleteOutput`: (true|false) (default: false) Should delete output bundle files
 - `lang`: (en|cn|[YOUR_LANG_FILE_PATH]) console.log output language, default: (cn), or your custom language file path, references to lang.js.sample file in example folder
 - `logPath`:upload log output path, (default: webpack output path)
 - `logName`:upload log output name, (default: wp.previous)
@@ -79,4 +79,4 @@ module.exports = {
 - a file named `wp.previous.json` will be generated after each compile to record the previous upload details, please don't delete this file if you want this plugin to delete previous upload files
 - try to CTRL+C to end process if the webpack process is ended automatically with webpack 3
 - Uploading js and style assets to different CDN storage is supported but not recommanded, because this plugin doesn't change the content of compiled files. Therefore, you will need to change the related output urls if you would like to do so.
-- For uploading HTML file to AWS S3, the output content-type need to be changed to `text/html`,  you can do that by changing the metadata on aws s3 console once the file is uploaded. You can also set up the `contentType` option but it's only recommanded when you are ONLY uploading the html file to s3 because it would also apply the option to all other bundle files that you are uploading.
+- For uploading HTML file to AWS S3, the output content-type need to be changed to `text/html`, you can do that by changing the metadata on aws s3 console once the file is uploaded. You can also set up the `contentType` option but it's only recommanded when you are ONLY uploading the html file to s3 because it would also apply the option to all other bundle files that you are uploading.
