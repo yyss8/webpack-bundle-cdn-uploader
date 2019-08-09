@@ -1,5 +1,14 @@
 # Changelog 改动记录
 
+## [0.5.1] - 2019-08-08
+
+- Updates change log file - 更新改动记录.
+
+## [0.5.0] - 2019-08-08
+- Removes unwanted testing files - 删除无用的测试文件.
+- Replaces http handler of qiniu - 七牛上传模块使用 request 替换原生 https.
+- Reformats coding style - 更新代码风格.
+
 ## [0.4.5 - 0.4.7] - 2019-06-30
 
 - Fixes incorrect path of non-js files - 修复非 JS 资源错误路径.

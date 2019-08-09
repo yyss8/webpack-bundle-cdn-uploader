@@ -1,4 +1,4 @@
-# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.4.7-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
+# webpack-bundle-cdn-uploader [![npm version](https://img.shields.io/badge/npm-0.5.1-blue.svg?style=flat)](https://www.npmjs.com/package/webpack-bundle-cdn-uploader)
 
    <img src="https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/example/output-screenshot.png?raw=true" width="350">
 
