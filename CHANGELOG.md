@@ -1,5 +1,9 @@
 # Changelog 改动记录
 
+## [0.5.3] - 2019-08-08
+
+- Fixes incorrect regexp checker - 修复错误regexp检查.
+
 ## [0.5.2] - 2019-08-08
 
 - Fixes incorrect file deleted number of Qiniu library - 修复七牛模块返回错误删除数.

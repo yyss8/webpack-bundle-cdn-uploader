@@ -603,7 +603,7 @@ class WebpackBundleUploaderPlugin {
         }
 
         let validating = [];
-        
+
         this.options.cdn.forEach((cdn, index) => {
           validating.push(
             new Promise((__res, __reject) => {
@@ -614,8 +614,7 @@ class WebpackBundleUploaderPlugin {
                 return;
               }
 
-              // @ts-ignore
-              if (typeof cdn.test === 'undefined' || !cdn.test instanceof RegExp) {
+              if (typeof cdn.test === 'undefined' || !(cdn.test instanceof RegExp)) {
                 __reject(`${this.lang.INVALID_REGEX} ${index !== -1 ? `, Index: ${index}` : ''}`);
                 return;
               }
