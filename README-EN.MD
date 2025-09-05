@@ -4,7 +4,7 @@
 
 [中文翻译](https://github.com/yyss8/webpack-bundle-cdn-uploader/blob/master/README.md)
 
-#### An open-box webpack plugin to upload your compiled bundle files to CDN stroages or FTP server
+#### A simple, open-source Webpack plugin that works right out of the box to automatically upload your compiled bundle files to a CDN or FTP server.
 
 ### Tested Environments
 
